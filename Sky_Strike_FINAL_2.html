@@ -346,6 +346,7 @@
     <p style="color: #94a3b8; font-size: 13px; margin: 0;">This is an early version of the game.<br/>More levels, enemies and features are coming soon.<br/>Stay tuned &mdash; the journey is just beginning. 🚀</p>
 
     <button class="steam-btn" onclick="location.reload()" style="margin-top:25px;">Play Again</button>
+    <button class="steam-btn" onclick="backToMenu()" style="margin-top:25px; margin-left: 10px; background: linear-gradient(to right, #4b5563 5%, #1f2937 60%);">Back to Menu</button>
   </div>
 </div>
 
@@ -382,6 +383,7 @@
     <div id="lbList" style="font-size:13px;color:#c7d5e0;"></div>
   </div>
   <button class="steam-btn" onclick="restartCurrentLevel()">Retry Mission</button>
+  <button class="steam-btn" onclick="backToMenu()" style="margin-left: 10px; background: linear-gradient(to right, #4b5563 5%, #1f2937 60%);">Back to Menu</button>
 </div>
 
 <canvas id="game"></canvas>
@@ -909,8 +911,26 @@ const plane = {
     velY: 0, velX: 0, rotation: 0, shooting: false 
 };
 
+// === BACK TO MENU (iframe-aware) ===
+function backToMenu() {
+    try {
+        if (window.parent !== window) {
+            // Running inside Lovable menu iframe -> tell parent to navigate
+            window.parent.postMessage({ type: 'BACK_TO_MENU', source: 'sky-strike' }, '*');
+        }
+    } catch (err) { /* ignore cross-origin access issues */ }
+    // Standalone (direct open / GitHub Pages / itch.io): no menu to return to -> do nothing
+}
+
 let keys = {};
 window.addEventListener("keydown", e => {
+    // ESC -> back to menu (skip when typing player name into leaderboard input)
+    if (e.key === 'Escape') {
+        const t = document.activeElement;
+        if (t && t.tagName === 'INPUT') { t.blur(); return; }
+        backToMenu();
+        return;
+    }
     // Prevent browser default for game keys (Space scrolls page, Arrows scroll page)
     if([' ','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
     keys[e.key.toLowerCase()] = true;
