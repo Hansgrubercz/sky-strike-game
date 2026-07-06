@@ -339,13 +339,13 @@
     </div>
 
     <div id="scoreSubmitComplete" style="margin: 0 0 18px 0;">
-      <input id="playerNameComplete" type="text" maxlength="16" placeholder="Tvoje jméno (max 16 znaků)"
+      <input id="playerNameComplete" type="text" maxlength="16" placeholder="Your name (max 16 chars)"
         style="background:#1b2838;border:1px solid #aa44ff;color:#e9d5ff;padding:8px 12px;font-size:15px;border-radius:4px;width:220px;margin-right:8px;outline:none;"/>
-      <button class="steam-btn" id="submitBtnComplete" onclick="submitFinalScore()" style="background: linear-gradient(to right, #c084fc 5%, #6b21a8 60%);">Uložit skóre</button>
+      <button class="steam-btn" id="submitBtnComplete" onclick="submitFinalScore()" style="background: linear-gradient(to right, #c084fc 5%, #6b21a8 60%);">SAVE SCORE</button>
     </div>
 
     <div id="leaderboardComplete" style="margin: 0 0 22px 0; min-height: 40px;">
-      <div style="color:#c084fc;font-size:13px;margin-bottom:6px;">⚡ TOP 10 — DOHRÁNO CELÉ HRY</div>
+      <div style="color:#c084fc;font-size:13px;margin-bottom:6px;">⚡ TOP 10 — FULL GAME COMPLETED</div>
       <div id="lbListComplete" style="font-size:13px;color:#c7d5e0;"></div>
     </div>
 
@@ -381,12 +381,12 @@
   <h1 style="font-weight: 200; margin: 0; font-size: 42px">MISSION FAILED</h1>
   <p id="finalScore" style="color: #c7d5e0; margin: 25px 0; font-size: 20px"></p>
   <div id="scoreSubmit" style="margin: 0 0 18px 0;">
-    <input id="playerName" type="text" maxlength="16" placeholder="Tvoje jméno (max 16 znaků)"
+    <input id="playerName" type="text" maxlength="16" placeholder="Your name (max 16 chars)"
       style="background:#1b2838;border:1px solid #66c0f4;color:#c7d5e0;padding:8px 12px;font-size:15px;border-radius:4px;width:220px;margin-right:8px;outline:none;"/>
-    <button class="steam-btn" id="submitBtn" onclick="submitScore()">Uložit skóre</button>
+    <button class="steam-btn" id="submitBtn" onclick="submitScore()">SAVE SCORE</button>
   </div>
   <div id="leaderboard" style="margin: 0 0 18px 0; min-height: 40px;">
-    <div style="color:#66c0f4;font-size:13px;margin-bottom:6px;">⚡ TOP 10 HRÁČŮ</div>
+    <div style="color:#66c0f4;font-size:13px;margin-bottom:6px;">⚡ TOP 10 PLAYERS</div>
     <div id="lbList" style="font-size:13px;color:#c7d5e0;"></div>
   </div>
   <button class="steam-btn" onclick="restartCurrentLevel()">Retry Mission</button>
@@ -1562,7 +1562,7 @@ function restartCurrentLevel() {
     const scoreSubmitEl = document.getElementById('scoreSubmit');
     if(scoreSubmitEl) scoreSubmitEl.style.display = '';
     const submitBtnEl = document.getElementById('submitBtn');
-    if(submitBtnEl) { submitBtnEl.disabled = false; submitBtnEl.textContent = 'Uložit skóre'; }
+    if(submitBtnEl) { submitBtnEl.disabled = false; submitBtnEl.textContent = 'SAVE SCORE'; }
     const playerNameEl = document.getElementById('playerName');
     if(playerNameEl) playerNameEl.value = '';
     // Prejdi na spravny level
@@ -9870,7 +9870,7 @@ function showLeaderboard() { renderLeaderboard(loadLeaderboard()); }
 function renderLeaderboard(scores) {
     const el = document.getElementById('lbList');
     if (!scores || scores.length === 0) {
-        el.innerHTML = '<span style="color:#4a6d8c">Zatím žádné záznamy.</span>'; return;
+        el.innerHTML = '<span style="color:#4a6d8c">No records yet.</span>'; return;
     }
     el.innerHTML = scores.map((s, i) => {
         const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}.`;
@@ -9912,7 +9912,7 @@ function renderFinalLeaderboard(scores) {
     const el = document.getElementById('lbListComplete');
     if (!el) return;
     if (!scores || scores.length === 0) {
-        el.innerHTML = '<span style="color:#7c5a99">Zatím žádné záznamy.</span>'; return;
+        el.innerHTML = '<span style="color:#7c5a99">No records yet.</span>'; return;
     }
     el.innerHTML = scores.map((s, i) => {
         const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}.`;
