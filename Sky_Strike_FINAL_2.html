@@ -309,6 +309,13 @@
   </div>
 </div>
 
+<div id="pauseOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 240; display: none; background: rgba(2,4,8,0.82); align-items: center; justify-content: center; flex-direction: column; backdrop-filter: blur(3px);">
+    <div style="font-size: 64px; font-weight: 900; letter-spacing: 14px; color: #00fbff; text-shadow: 0 0 30px rgba(0,251,255,0.8); margin-bottom: 40px;">PAUSED</div>
+    <button onclick="togglePause()" style="display: block; width: 280px; margin: 10px 0; padding: 16px; background: rgba(0,251,255,0.1); border: 2px solid #00fbff; color: #00fbff; font-size: 18px; font-weight: 700; letter-spacing: 4px; cursor: pointer; font-family: inherit;">▶ RESUME</button>
+    <button onclick="gamePaused = false; document.getElementById('pauseOverlay').style.display='none'; backToMenu();" style="display: block; width: 280px; margin: 10px 0; padding: 16px; background: rgba(255,0,60,0.08); border: 2px solid #ff003c; color: #ff003c; font-size: 18px; font-weight: 700; letter-spacing: 4px; cursor: pointer; font-family: inherit;">◀ BACK TO MENU</button>
+    <div style="margin-top: 30px; color: rgba(255,255,255,0.45); font-size: 13px; letter-spacing: 2px;">PRESS ESC TO RESUME</div>
+</div>
+
 <div id="levelComplete" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 260; display: none; background: radial-gradient(ellipse at center, #1a0a2e 0%, #020408 70%); overflow: hidden;">
   <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; width: 90%; max-width: 700px;">
 
@@ -951,6 +958,17 @@ function notifyLevelCompleted(level) {
     } catch {}
 }
 
+let gamePaused = false;
+function togglePause() {
+    // Only pause during active gameplay (not on menus/screens)
+    if (!gameStarted || !gameActive) return;
+    gamePaused = !gamePaused;
+    keys = {}; // release stuck movement keys
+    const ov = document.getElementById('pauseOverlay');
+    if (ov) ov.style.display = gamePaused ? 'flex' : 'none';
+    try { if (gamePaused) bgMusic.pause(); else bgMusic.play(); } catch {}
+}
+
 function backToMenu() {
     try {
         if (window.parent !== window) {
@@ -967,7 +985,11 @@ window.addEventListener("keydown", e => {
     if (e.key === 'Escape') {
         const t = document.activeElement;
         if (t && t.tagName === 'INPUT') { t.blur(); return; }
-        backToMenu();
+        if (typeof gameStarted !== 'undefined' && gameStarted && gameActive) {
+            togglePause(); // during gameplay ESC = pause
+        } else {
+            backToMenu(); // on other screens ESC = back to menu
+        }
         return;
     }
     // Prevent browser default for game keys (Space scrolls page, Arrows scroll page)
@@ -9589,8 +9611,10 @@ function gameLoop(now) {
         const deltaTime = (now - lastTime) / (1000 / BASE_FPS);
         lastTime = now;
         const dt = Math.min(deltaTime, 3.0); 
-        update(dt);
-        render();
+        if (!gamePaused) {
+            update(dt);
+            render();
+        }
     } catch(error) {
         console.error("Game loop error:", error);
         // Don't stop the game, just log the error
