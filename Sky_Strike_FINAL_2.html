@@ -9694,6 +9694,12 @@ window.onload = () => {
     document.getElementById('levelVal').textContent = currentLevel;
     document.getElementById('levelName').textContent = LEVEL_NAMES[currentLevel - 1] || 'NYC NEON';
 
+    // Standalone mode (no parent menu): hide all "Back to Menu" buttons,
+    // they have nothing to return to. In the Lovable iframe they stay visible.
+    if (window.parent === window) {
+        document.querySelectorAll('button[onclick*="backToMenu"]').forEach(b => b.style.display = 'none');
+    }
+
     // Apply aircraft chosen in the Lovable Hangar (URL param)
     if (AIRCRAFT_PARAM !== null) {
         selectedAircraft = AIRCRAFT_TYPES[AIRCRAFT_PARAM];
