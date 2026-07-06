@@ -802,7 +802,7 @@ const SPRITE_CONFIG = {
 // ============ AIRCRAFT SELECTION SYSTEM ============
 const AIRCRAFT_TYPES = [
     { 
-        name: "F-22 RAPTOR", 
+        name: "F-47X PHANTOM", 
         type: "single", 
         color: "#00fbff", 
         speed: 8, 
@@ -814,7 +814,7 @@ const AIRCRAFT_TYPES = [
         shieldDurationMultiplier: 1.5
     },
     { 
-        name: "A-10 WARTHOG", 
+        name: "A-12 THUNDERBOLT", 
         type: "spread", 
         color: "#4ade80", 
         speed: 5, 
@@ -825,7 +825,7 @@ const AIRCRAFT_TYPES = [
         damageReduction: 0.5  // Takes 50% less damage
     },
     { 
-        name: "MiG-31 INTERCEPTOR", 
+        name: "N-01 WRAITH", 
         type: "rapid", 
         color: "#fbbf24",
         speed: 11, 
@@ -836,7 +836,7 @@ const AIRCRAFT_TYPES = [
         magnetRadius: 150
     },
     { 
-        name: "B-2 SPIRIT", 
+        name: "T-99 HOVER-TANK", 
         type: "heavy", 
         color: "#a78bfa", 
         speed: 4, 
@@ -3536,9 +3536,12 @@ spawnParticle(e.x, e.y+e.h/2, -3-Math.random()*2, (Math.random()-0.5)*3, 0.4, "r
 
     DOM.scoreVal.textContent = Math.floor(score).toLocaleString();
     const cCont = DOM.comboContainer;
-    if(combo > 1) {
+    const scoreMult = 1 + Math.floor(combo/5);
+    if(scoreMult > 1) {
         cCont.style.opacity = "1";
-        DOM.comboVal.textContent = "x" + combo;
+        // Show the REAL score multiplier + combo count toward the next tier
+        DOM.comboVal.textContent = "x" + scoreMult;
+        cCont.title = "Combo " + combo + " - don't get hit!";
     } else cCont.style.opacity = "0";
     
     // Update energy bar
