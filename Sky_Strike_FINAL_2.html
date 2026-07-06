@@ -910,6 +910,18 @@ const AUDIO_SETTINGS = (() => {
     } catch { return { master: 1, music: 1, sfx: 1 }; }
 })();
 
+// === AIRCRAFT from URL (?aircraft=0-3, set by the Lovable Hangar) ===
+// 0 = F-47X Phantom, 1 = A-12 Thunderbolt, 2 = N-01 Wraith, 3 = T-99 Hover-Tank
+// null = not provided -> game shows its own selection screen (standalone mode)
+const AIRCRAFT_PARAM = (() => {
+    try {
+        const v = new URLSearchParams(window.location.search).get('aircraft');
+        if (v === null) return null;
+        const n = parseInt(v, 10);
+        return (n >= 0 && n <= 3) ? n : null;
+    } catch { return null; }
+})();
+
 const LEVEL_THRESHOLDS = [0, 50000, 100000];
 let levelTransition = false, transitionTimer = 0, transitionPhase = 0;
 
@@ -929,6 +941,16 @@ const plane = {
 };
 
 // === BACK TO MENU (iframe-aware) ===
+function notifyLevelCompleted(level) {
+    // Tell the Lovable menu that a level was completed (for mission unlocks).
+    // Standalone (no parent frame): does nothing.
+    try {
+        if (window.parent !== window) {
+            window.parent.postMessage({ type: 'LEVEL_COMPLETED', level: level, source: 'sky-strike' }, '*');
+        }
+    } catch {}
+}
+
 function backToMenu() {
     try {
         if (window.parent !== window) {
@@ -2890,6 +2912,7 @@ function update(dt) {
 
                     if(boss.hp <= 0) {
                         // Boss defeated!
+                        notifyLevelCompleted(currentLevel);
                         const bossX = boss.x + boss.w/2;
                         const bossY = boss.y + boss.h/2;
                         bossActive = false;
@@ -3393,19 +3416,23 @@ spawnParticle(e.x, e.y+e.h/2, -3-Math.random()*2, (Math.random()-0.5)*3, 0.4, "r
                     
                     // SMALL (50 pts)
                     if(en.type === 'scorpion' || en.type === 'ember_swarm' || 
-                       en.type === 'blizzard_swarm' || en.type === 'anglerfish') {
+                       en.type === 'blizzard_swarm' || en.type === 'anglerfish' ||
+                       en.type === 'torpedo') {
                         scoreValue = 50; pickupValue = 50; explosionColor = "#ffcc00";
                     }
                     // MEDIUM (150 pts)
                     else if(en.type === 'fighter' || en.type === 'frost_drone' || 
-                            en.type === 'ash_phantom' || en.type === 'police_drone') {
+                            en.type === 'ash_phantom' || en.type === 'police_drone' ||
+                            en.type === 'seagull' || en.type === 'magnetic_mine' ||
+                            en.type === 'laser_drone') {
                         scoreValue = 150; pickupValue = 150; explosionColor = "#ffd700";
                     }
                     // ELITE (500 pts)
                     else if(en.type === 'heli' || en.type === 'vulture' || 
                             en.type === 'sandstorm' || en.type === 'pyro_drone' ||
                             en.type === 'magma_bomber' || en.type === 'ice_mech' ||
-                            en.type === 'crystal_sentinel') {
+                            en.type === 'crystal_sentinel' || en.type === 'submarine' ||
+                            en.type === 'inferno_walker') {
                         scoreValue = 500; pickupValue = 500; explosionColor = "#ff6600";
                     }
                     
@@ -4627,6 +4654,7 @@ function updateBoss(b, dt) {
                 createExplosion(b.x + b.w/2, b.y + b.h/2, '#ff6600', 150);
                 shake = 60; playSnd(40, 1.5, 'sawtooth', 0.3);
                 bossActive = false; boss = null; score += 5000;
+                notifyLevelCompleted(7);
                 setTimeout(() => {
                     gameActive = false;
                     const el = document.getElementById('levelComplete');
@@ -9639,8 +9667,14 @@ window.onload = () => {
     document.getElementById('levelVal').textContent = currentLevel;
     document.getElementById('levelName').textContent = LEVEL_NAMES[currentLevel - 1] || 'NYC NEON';
 
-    // Skip intro + selection screen if launched from menu (level already set)
-    if (currentLevel > 1) {
+    // Apply aircraft chosen in the Lovable Hangar (URL param)
+    if (AIRCRAFT_PARAM !== null) {
+        selectedAircraft = AIRCRAFT_TYPES[AIRCRAFT_PARAM];
+    }
+
+    // Skip intro + selection screen if launched from menu
+    // (level > 1, or aircraft already chosen in the Hangar)
+    if (currentLevel > 1 || AIRCRAFT_PARAM !== null) {
         // Hide intro and selection screens immediately
         const introEl = document.getElementById('introScreen');
         if (introEl) introEl.style.display = 'none';
