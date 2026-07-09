@@ -3856,8 +3856,8 @@ function createBoss() {
         y: canvas.height / 2 - 100,
         w: 200,
         h: 200,
-        hp: 60,
-        maxHp: 60,
+        hp: 45,
+        maxHp: 45,
         phase: 1,
         shootTimer: 0,
         moveTimer: 0,
@@ -5218,7 +5218,7 @@ function updateBoss(b, dt) {
     }
     
     // Attack patterns
-    const fireRate = b.phase === 3 ? 15 : b.phase === 2 ? 25 : 35;
+    const fireRate = b.phase === 3 ? 22 : b.phase === 2 ? 32 : 45;
     
     if(b.shootTimer > fireRate) {
         b.shootTimer = 0;
@@ -5233,7 +5233,7 @@ function updateBoss(b, dt) {
         
         turretPositions.forEach((pos, idx) => {
             const angle = Math.atan2(plane.y - pos[1], plane.x - pos[0]);
-            const speed = 15;
+            const speed = 10;
             enemyBullets.push({
                 x: pos[0],
                 y: pos[1],
@@ -5254,7 +5254,7 @@ function updateBoss(b, dt) {
                     y: b.y + b.h/2,
                     w: 25,
                     h: 6,
-                    vx: -12,
+                    vx: -9,
                     vy: i * 3,
                     color: '#ff6600'
                 });
