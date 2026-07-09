@@ -2858,42 +2858,42 @@ function update(dt) {
     }
     
     // Level progression and boss spawn
-    if(currentLevel === 1 && score >= 25000 && !bossSpawned) {
+    if(currentLevel === 1 && score >= 20000 && !bossSpawned) {
         bossSpawned = true;
         bossActive = true;
         boss = createBoss();
         enemies = [];
         shake = 35;
         playSnd(40, 2.0, 'sawtooth', 0.25);
-    } else if(currentLevel === 2 && score >= 25000 && !bossSpawned) {
+    } else if(currentLevel === 2 && score >= 20000 && !bossSpawned) {
         bossSpawned = true;
         bossActive = true;
         boss = createBoss();
         enemies = [];
         shake = 35;
         playSnd(40, 2.0, 'sawtooth', 0.25);
-    } else if(currentLevel === 3 && score >= 25000 && !bossSpawned) {
+    } else if(currentLevel === 3 && score >= 20000 && !bossSpawned) {
         bossSpawned = true;
         bossActive = true;
         boss = createBoss();
         enemies = [];
         shake = 35;
         playSnd(40, 2.0, 'sawtooth', 0.25);
-    } else if(currentLevel === 5 && score >= 25000 && !bossSpawned) {
+    } else if(currentLevel === 5 && score >= 20000 && !bossSpawned) {
         bossSpawned = true;
         bossActive = true;
         boss = createBoss();
         enemies = [];
         shake = 50;
         playSnd(30, 2.5, 'sawtooth', 0.3);
-    } else if(currentLevel === 4 && score >= 25000 && !bossSpawned) {
+    } else if(currentLevel === 4 && score >= 20000 && !bossSpawned) {
         bossSpawned = true;
         bossActive = true;
         boss = createBoss();
         enemies = [];
         shake = 50;
         playSnd(30, 2.5, 'sawtooth', 0.3);
-    } else if(currentLevel === 6 && score >= 25000 && !bossSpawned) {
+    } else if(currentLevel === 6 && score >= 20000 && !bossSpawned) {
         bossSpawned = true; bossActive = true; boss = createBoss();
         enemies = []; enemyBullets = []; shake = 60; playSnd(25, 3.0, 'sawtooth', 0.35);
     } else if(currentLevel === 7 && score >= 20000 && !bossSpawned) {
@@ -5271,9 +5271,9 @@ function updateBoss(b, dt) {
                         w: 30,
                         h: 10,
                         vx: -8,
-                        vy: 0,
+                        vy: (i - 1) * 2,
                         color: '#ffff00',
-                        tracking: true
+                        tracking: false
                     });
                 }, i * 100);
             }
