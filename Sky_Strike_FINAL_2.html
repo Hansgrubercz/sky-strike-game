@@ -3737,7 +3737,7 @@ function createBoss() {
     if(currentLevel === 6) {
         return {
             x: canvas.width + 50, y: canvas.height / 2 - 90,
-            w: 220, h: 180, hp: 150, maxHp: 150,
+            w: 220, h: 180, hp: 115, maxHp: 115,
             phase: 1, shootTimer: 0, moveTimer: 0,
             targetY: canvas.height / 2 - 90, vertSpeed: 1.2, moveDir: -1,
             attackPattern: 0, glowPhase: 0, smokeTimer: 0, legPhase: 0,
@@ -3754,8 +3754,8 @@ function createBoss() {
             y: 100, // Start at top right
             w: 150,
             h: 150,
-            hp: 140,
-            maxHp: 140,
+            hp: 105,
+            maxHp: 105,
             phase: 1, // 1 = slow, 2 = fast, 3 = berserk
             shootTimer: 0,
             moveTimer: 0,
@@ -3787,8 +3787,8 @@ function createBoss() {
             y: canvas.height / 2,
             w: 300,
             h: 80,
-            hp: 120,
-            maxHp: 120,
+            hp: 90,
+            maxHp: 90,
             phase: 1,          // 1 = normal, 2 = dash attack
             shootTimer: 0,
             moveTimer: 0,
@@ -3812,8 +3812,8 @@ function createBoss() {
             y: canvas.height - 200,
             w: 220,
             h: 120,
-            hp: 100,
-            maxHp: 100,
+            hp: 75,
+            maxHp: 75,
             phase: 1,
             shootTimer: 0,
             moveTimer: 0,
@@ -3833,8 +3833,8 @@ function createBoss() {
             y: canvas.height - 180, // STARTS AT BOTTOM!
             w: 220,
             h: 160,
-            hp: 80,
-            maxHp: 80,
+            hp: 60,
+            maxHp: 60,
             phase: 1,
             shootTimer: 0,
             moveTimer: 0,
@@ -4748,7 +4748,7 @@ function updateBoss(b, dt) {
         const hpPct6 = b.hp / b.maxHp;
         if(hpPct6 < 0.5 && b.phase === 1) { b.phase = 2; shake = 20; playSnd(60, 0.5, 'sawtooth', 0.2); }
         if(hpPct6 < 0.25 && b.phase === 2) { b.phase = 3; shake = 30; playSnd(40, 0.8, 'sawtooth', 0.3); }
-        const speedMult6 = b.phase === 3 ? 0.45 : b.phase === 2 ? 0.65 : 1.0;
+        const speedMult6 = b.phase === 3 ? 0.6 : b.phase === 2 ? 0.8 : 1.0;
         for(let i = 0; i < 3; i++) {
             b.gunTimer[i] = (b.gunTimer[i] || 0) + dt;
             const delay = (90 + i * 25) * speedMult6;
@@ -4825,15 +4825,15 @@ function updateBoss(b, dt) {
         }
         
         // Shooting
-        if(b.shootTimer > (b.phase === 3 ? 30 : 50)) {
+        if(b.shootTimer > (b.phase === 3 ? 40 : 60)) {
             b.shootTimer = 0;
             // Ice projectiles toward player
             const angle = Math.atan2(plane.y - b.y, plane.x - b.x);
             enemyBullets.push({
                 x: b.x, y: b.y,
                 w: 15, h: 15,
-                vx: Math.cos(angle) * 8,
-                vy: Math.sin(angle) * 8,
+                vx: Math.cos(angle) * 7,
+                vy: Math.sin(angle) * 7,
                 color: '#00fbff'
             });
             playSnd(300, 0.1, 'sine', 0.05);
@@ -4914,10 +4914,10 @@ function updateBoss(b, dt) {
             b.y += (b.targetY - b.y) * 0.025 * dt;
             
             // Shoot lava projectiles
-            if(b.shootTimer > 40) {
+            if(b.shootTimer > 50) {
                 b.shootTimer = 0;
-                enemyBullets.push({x: b.x, y: b.y + b.h/2 - 10, w: 18, h: 18, vx: -10, vy: -2, color: '#ff4500'});
-                enemyBullets.push({x: b.x, y: b.y + b.h/2 + 10, w: 18, h: 18, vx: -10, vy: 2, color: '#ff6b35'});
+                enemyBullets.push({x: b.x, y: b.y + b.h/2 - 10, w: 18, h: 18, vx: -8, vy: -2, color: '#ff4500'});
+                enemyBullets.push({x: b.x, y: b.y + b.h/2 + 10, w: 18, h: 18, vx: -8, vy: 2, color: '#ff6b35'});
                 playSnd(200, 0.1, 'sawtooth', 0.06);
             }
             
@@ -4968,11 +4968,11 @@ function updateBoss(b, dt) {
             }
             
             // Faster shooting in phase 2
-            if(b.shootTimer > 25 && !b.dashActive) {
+            if(b.shootTimer > 35 && !b.dashActive) {
                 b.shootTimer = 0;
-                enemyBullets.push({x: b.x, y: b.y + b.h/2 - 15, w: 18, h: 18, vx: -12, vy: -3, color: '#ff4500'});
-                enemyBullets.push({x: b.x, y: b.y + b.h/2, w: 18, h: 18, vx: -14, vy: 0, color: '#ffaa00'});
-                enemyBullets.push({x: b.x, y: b.y + b.h/2 + 15, w: 18, h: 18, vx: -12, vy: 3, color: '#ff4500'});
+                enemyBullets.push({x: b.x, y: b.y + b.h/2 - 15, w: 18, h: 18, vx: -9, vy: -3, color: '#ff4500'});
+                enemyBullets.push({x: b.x, y: b.y + b.h/2, w: 18, h: 18, vx: -11, vy: 0, color: '#ffaa00'});
+                enemyBullets.push({x: b.x, y: b.y + b.h/2 + 15, w: 18, h: 18, vx: -9, vy: 3, color: '#ff4500'});
                 playSnd(180, 0.12, 'sawtooth', 0.07);
             }
         }
@@ -5003,7 +5003,7 @@ function updateBoss(b, dt) {
             playSnd(80, 0.6, 'sawtooth', 0.12);
         }
         
-        const fireRate = b.phase === 2 ? 35 : 50;
+        const fireRate = b.phase === 2 ? 45 : 60;
         
         if(b.shootTimer > fireRate) {
             b.shootTimer = 0;
@@ -5015,7 +5015,7 @@ function updateBoss(b, dt) {
                     y: b.y + b.h/2 - 30,
                     w: 22,
                     h: 10,
-                    vx: -12,
+                    vx: -9,
                     vy: (Math.random() - 0.5) * 2,
                     color: '#fbbf24'
                 });
@@ -5139,7 +5139,7 @@ function updateBoss(b, dt) {
         }
         
         // Attack - dual cannons (shoots while moving!)
-        const fireRate = b.phase === 2 ? 30 : 45;
+        const fireRate = b.phase === 2 ? 40 : 55;
         
         if(b.shootTimer > fireRate) {
             b.shootTimer = 0;
@@ -5159,7 +5159,7 @@ function updateBoss(b, dt) {
                     y: pos[1],
                     w: 25,
                     h: 10,
-                    vx: -13,
+                    vx: -10,
                     vy: vyOffset,
                     color: '#ff8c00'
                 });
@@ -5174,7 +5174,7 @@ function updateBoss(b, dt) {
                         y: canvas.height - 60,
                         w: 20,
                         h: 15,
-                        vx: -10 - i * 2,
+                        vx: -8 - i,
                         vy: -5,
                         color: '#d2691e'
                     });
