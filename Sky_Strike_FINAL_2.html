@@ -3269,9 +3269,9 @@ spawnParticle(e.x, e.y+e.h/2, -3-Math.random()*2, (Math.random()-0.5)*3, 0.4, "r
         else if(e.type === 'laser_drone') { shootDelay = 999; bulletColor = '#ef4444'; } // Laser drones use state machine, not normal shooting
         else if(e.type === 'fighter') { shootDelay = 70; bulletColor = '#ff4d4d'; }
         else if(e.type === 'heli') { shootDelay = 110; bulletColor = '#ffd700'; }
-        else if(e.type === 'scorpion') { shootDelay = 50; bulletColor = '#ff6600'; }
-        else if(e.type === 'vulture') { shootDelay = 90; bulletColor = '#8b4513'; }
-        else if(e.type === 'sandstorm') { shootDelay = 60; bulletColor = '#daa520'; }
+        else if(e.type === 'scorpion') { shootDelay = 50; bulletColor = '#ff0055'; }
+        else if(e.type === 'vulture') { shootDelay = 90; bulletColor = '#d400ff'; }
+        else if(e.type === 'sandstorm') { shootDelay = 60; bulletColor = '#ff1744'; }
         else if(e.type === 'magma_bomber') { shootDelay = 100; bulletColor = '#ff4500'; }
         else if(e.type === 'ash_phantom') { shootDelay = 60; bulletColor = '#cccccc'; }
         else if(e.type === 'inferno_walker') { shootDelay = 80; bulletColor = '#ff6b35'; }
@@ -5161,7 +5161,7 @@ function updateBoss(b, dt) {
                     h: 10,
                     vx: -10,
                     vy: vyOffset,
-                    color: '#ff8c00'
+                    color: '#ff0066'
                 });
                 b.gunTimer[idx] = 5;
             });
@@ -5176,7 +5176,7 @@ function updateBoss(b, dt) {
                         h: 15,
                         vx: -8 - i,
                         vy: -5,
-                        color: '#d2691e'
+                        color: '#ff44aa'
                     });
                 }
             }
@@ -9189,6 +9189,9 @@ spawnParticle(eruptX, eruptY, Math.cos(angle)*speed, Math.sin(angle)*speed, 0.5+
             ctx.fill();
             ctx.globalAlpha = 1;
         }
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.fillRect(eb.x - 2, eb.y - 2, eb.w + 4, eb.h + 4);
         ctx.fillStyle = eb.color;
         ctx.shadowBlur = 10;
         ctx.shadowColor = eb.color;
