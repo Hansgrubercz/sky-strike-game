@@ -3268,7 +3268,7 @@ spawnParticle(e.x, e.y+e.h/2, -3-Math.random()*2, (Math.random()-0.5)*3, 0.4, "r
         else if(e.type === 'torpedo') { shootDelay = 999; bulletColor = '#ffffff'; } // Torpedoes don't shoot
         else if(e.type === 'laser_drone') { shootDelay = 999; bulletColor = '#ef4444'; } // Laser drones use state machine, not normal shooting
         else if(e.type === 'fighter') { shootDelay = 70; bulletColor = '#ff4d4d'; }
-        else if(e.type === 'heli') { shootDelay = 110; bulletColor = '#ffd700'; }
+        else if(e.type === 'heli') { shootDelay = 110; bulletColor = '#ff00aa'; }
         else if(e.type === 'scorpion') { shootDelay = 50; bulletColor = '#ff0055'; }
         else if(e.type === 'vulture') { shootDelay = 90; bulletColor = '#d400ff'; }
         else if(e.type === 'sandstorm') { shootDelay = 60; bulletColor = '#ff1744'; }
@@ -9190,7 +9190,7 @@ spawnParticle(eruptX, eruptY, Math.cos(angle)*speed, Math.sin(angle)*speed, 0.5+
             ctx.globalAlpha = 1;
         }
         ctx.shadowBlur = 0;
-        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
         ctx.fillRect(eb.x - 2, eb.y - 2, eb.w + 4, eb.h + 4);
         ctx.fillStyle = eb.color;
         ctx.shadowBlur = 10;
