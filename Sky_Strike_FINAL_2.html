@@ -3316,9 +3316,11 @@ spawnParticle(e.x, e.y+e.h/2, -3-Math.random()*2, (Math.random()-0.5)*3, 0.4, "r
                 // Shoots fast straight shot
                 enemyBullets.push({x:e.x, y:e.y+15, w:20, h:4, vx:-16, vy:0, color: bulletColor});
             } else if(e.type === 'inferno_walker') {
-                // Shoots anti-air missile upwards
-                const aimError = (Math.random() - 0.5) * 20;
-                enemyBullets.push({ x: e.x+20, y: e.y-10, w: 10, h: 25, vx: -5 + aimError * 0.6, vy: -6.5 + aimError * 1.2, color: bulletColor, tracking: false });
+                // AA missile: strili jen na cile pred sebou, nikdy kolmo vzhuru
+                if(plane.x < e.x - 120) {
+                    const aimError = (Math.random() - 0.5) * 3;
+                    enemyBullets.push({ x: e.x+20, y: e.y-10, w: 10, h: 25, vx: -5 + aimError * 0.4, vy: -6.5 + aimError, color: bulletColor, tracking: false });
+                }
             } else if(e.type === 'acid_drone') {
                 enemyBullets.push({x:e.x, y:e.y+30, w:15, h:15, vx:-7, vy:2, color: bulletColor, isAcid: true});
                 enemyBullets.push({x:e.x, y:e.y+30, w:15, h:15, vx:-7, vy:-2, color: bulletColor, isAcid: true});
