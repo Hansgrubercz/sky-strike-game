@@ -2185,6 +2185,12 @@ function update(dt) {
                 hitStopTimer = Math.max(hitStopTimer, 20); // Don't stack, just ensure minimum
                 
                 if(e.hp <= 0) {
+                    items.push({
+                        x: e.x + e.w/2, y: e.y + e.h/2,
+                        w: 30, h: 30, r: 15,
+                        type: 'score_crystal',
+                        value: 300
+                    });
                     enemies.splice(i, 1);
                     addScore(300);
                     energy = Math.min(100, energy + 5);
@@ -2681,7 +2687,7 @@ function update(dt) {
                 });
             } else {
                 // ICE MECH - Rare ground unit, very tanky
-                type = 'ice_mech'; hp = 8; speed = 3;
+                type = 'ice_mech'; hp = 5; speed = 3;
                 yPos = canvas.height - 100; // Walk on ice surface
                 enemies.push({ 
                     x: canvas.width, y: yPos, 
@@ -2743,7 +2749,7 @@ function update(dt) {
                 });
             } else {
                 // Inferno Walker - Rare ground unit
-                type = 'inferno_walker'; hp = 7; speed = 3;
+                type = 'inferno_walker'; hp = 5; speed = 3;
                 yPos = canvas.height - 95; // Walk on lava surface
                 enemies.push({ 
                     x:canvas.width, y:yPos, 
@@ -2833,7 +2839,7 @@ function update(dt) {
             } else if(rand < 0.75) {
                 enemies.push({ x: canvas.width + 100, y: 80 + Math.random() * (canvas.height - 350), w: 70, h: 60, s: 4 * gameSpeedMult, type: 'acid_drone', shootT: 0, hp: 5, bobOffset: Math.random()*100 });
             } else {
-                enemies.push({ x: canvas.width + 100, y: canvas.height - 90, w: 80, h: 60, s: 3 * gameSpeedMult, type: 'sludge_crawler', shootT: 0, hp: 7, bobOffset: Math.random()*100 });
+                enemies.push({ x: canvas.width + 100, y: canvas.height - 90, w: 80, h: 60, s: 3 * gameSpeedMult, type: 'sludge_crawler', shootT: 0, hp: 5, bobOffset: Math.random()*100 });
             }
         } else if(currentLevel === 7) {
             const rand = Math.random();
@@ -9934,6 +9940,6 @@ function renderFinalLeaderboard(scores) {
 }
 
 </script>
-<div id="buildTag" style="position:fixed; left:8px; bottom:6px; z-index:400; font-size:10px; color:rgba(255,255,255,0.35); font-family:monospace; pointer-events:none;">build 2026-07-12-E</div>
+<div id="buildTag" style="position:fixed; left:8px; bottom:6px; z-index:400; font-size:10px; color:rgba(255,255,255,0.35); font-family:monospace; pointer-events:none;">build 2026-07-12-F</div>
 </body>
 </html>

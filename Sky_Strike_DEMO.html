@@ -2207,6 +2207,12 @@ function update(dt) {
                 hitStopTimer = Math.max(hitStopTimer, 20); // Don't stack, just ensure minimum
                 
                 if(e.hp <= 0) {
+                    items.push({
+                        x: e.x + e.w/2, y: e.y + e.h/2,
+                        w: 30, h: 30, r: 15,
+                        type: 'score_crystal',
+                        value: 300
+                    });
                     enemies.splice(i, 1);
                     addScore(300);
                     energy = Math.min(100, energy + 5);
@@ -9533,6 +9539,6 @@ function renderFinalLeaderboard(scores) {
 }
 
 </script>
-<div id="buildTag" style="position:fixed; left:8px; bottom:6px; z-index:400; font-size:10px; color:rgba(255,255,255,0.35); font-family:monospace; pointer-events:none;">build 2026-07-12-E DEMO</div>
+<div id="buildTag" style="position:fixed; left:8px; bottom:6px; z-index:400; font-size:10px; color:rgba(255,255,255,0.35); font-family:monospace; pointer-events:none;">build 2026-07-12-F DEMO</div>
 </body>
 </html>
