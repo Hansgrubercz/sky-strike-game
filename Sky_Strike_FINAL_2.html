@@ -2557,13 +2557,13 @@ function update(dt) {
             const rand = Math.random();
             let type, hp, speed;
             
-            if(rand < 0.2) {
-                // DUNE MAW - GIANT Sand Worm (20% chance - more frequent!)
+            if(rand < 0.12) {
+                // DUNE MAW - GIANT Sand Worm (12% chance)
                 type = 'dune_maw';
                 
                 // Create worm with MORE segments
                 const segments = [];
-                const segmentCount = 10; // LONGER worm!
+                const segmentCount = 7;
                 const startX = canvas.width + 50;
                 const startY = canvas.height - 40;
                 
@@ -2583,12 +2583,12 @@ function update(dt) {
                     s: 0, // Speed handled by jump physics
                     type,
                     shootT: 0,
-                    hp: 12, // MUCH tougher!
+                    hp: 9,
                     bobOffset: Math.random() * 100,
                     // Worm physics - FASTER and HIGHER jumps!
-                    vx: -8 - Math.random() * 3, // Faster horizontal (was -6 to -8)
-                    vy: -16 - Math.random() * 6, // MUCH higher jump (was -12 to -16)
-                    gravity: 0.45, // Slightly stronger gravity
+                    vx: -6 - Math.random() * 2, // Dodgeable horizontal
+                    vy: -12 - Math.random() * 4, // Dodgeable jump height
+                    gravity: 0.4,
                     segments: segments,
                     trailHistory: [] // Position history for segments to follow
                 });
@@ -3272,7 +3272,7 @@ spawnParticle(e.x, e.y+e.h/2, -3-Math.random()*2, (Math.random()-0.5)*3, 0.4, "r
         else if(e.type === 'heli') { shootDelay = 110; bulletColor = '#ff00aa'; }
         else if(e.type === 'scorpion') { shootDelay = 50; bulletColor = '#ff0055'; }
         else if(e.type === 'vulture') { shootDelay = 90; bulletColor = '#d400ff'; }
-        else if(e.type === 'sandstorm') { shootDelay = 60; bulletColor = '#ff1744'; }
+        else if(e.type === 'sandstorm') { shootDelay = 90; bulletColor = '#ff1744'; }
         else if(e.type === 'magma_bomber') { shootDelay = 100; bulletColor = '#ff4500'; }
         else if(e.type === 'ash_phantom') { shootDelay = 60; bulletColor = '#cccccc'; }
         else if(e.type === 'inferno_walker') { shootDelay = 80; bulletColor = '#ff6b35'; }
@@ -3305,9 +3305,9 @@ spawnParticle(e.x, e.y+e.h/2, -3-Math.random()*2, (Math.random()-0.5)*3, 0.4, "r
                 enemyBullets.push({x:e.x, y:e.y+35, w:25, h:6, vx:-11, vy:0, color: bulletColor});
             } else if(e.type === 'sandstorm') {
                 // Sandstorm shoots spread
-                enemyBullets.push({x:e.x, y:e.y+25, w:28, h:6, vx:-11, vy:-2, color: bulletColor});
-                enemyBullets.push({x:e.x, y:e.y+25, w:28, h:6, vx:-11, vy:0, color: bulletColor});
-                enemyBullets.push({x:e.x, y:e.y+25, w:28, h:6, vx:-11, vy:2, color: bulletColor});
+                enemyBullets.push({x:e.x, y:e.y+25, w:28, h:6, vx:-8.5, vy:-1.6, color: bulletColor});
+                enemyBullets.push({x:e.x, y:e.y+25, w:28, h:6, vx:-8.5, vy:0, color: bulletColor});
+                enemyBullets.push({x:e.x, y:e.y+25, w:28, h:6, vx:-8.5, vy:1.6, color: bulletColor});
             } else if(e.type === 'magma_bomber') {
                 // Shoots heavy projectile down-forward
                 enemyBullets.push({x:e.x, y:e.y+30, w:12, h:12, vx:-8, vy:3, color: bulletColor});
