@@ -3240,9 +3240,10 @@ spawnParticle(e.x, e.y+e.h/2, -3-Math.random()*2, (Math.random()-0.5)*3, 0.4, "r
             e.shieldAngle = (e.shieldAngle || 0) + 0.03 * dt;
         } else if(e.type === 'turret') {
             e.angle = Math.atan2(plane.y - e.y, plane.x - e.x);
-            if(e.shootT > 70) {
-                const speed = 7;
-                enemyBullets.push({ x: e.x + e.w/2, y: e.y + e.h/2, w: 10, h: 10, vx: Math.cos(e.angle)*speed, vy: Math.sin(e.angle)*speed, color: '#ff0000' });
+            if(e.shootT > 95) {
+                const speed = 5;
+                const aimErr = (Math.random() - 0.5) * 0.4;
+                enemyBullets.push({ x: e.x + e.w/2, y: e.y + e.h/2, w: 13, h: 13, vx: Math.cos(e.angle + aimErr)*speed, vy: Math.sin(e.angle + aimErr)*speed, color: '#ff1a1a' });
                 e.shootT = 0;
             }
         } else if(e.type === 'laser_fighter') {
@@ -3297,7 +3298,7 @@ spawnParticle(e.x, e.y+e.h/2, -3-Math.random()*2, (Math.random()-0.5)*3, 0.4, "r
                 enemyBullets.push({x:e.x, y:e.y+25, w:20, h:8, vx:-13, vy:0, color: bulletColor});
             } else if(e.type === 'submarine') {
                 // Submarine launches torpedo - DIAGONALLY UPWARD
-                enemyBullets.push({x:e.x, y:e.y+25, w:35, h:8, vx:-9, vy:-6, color: bulletColor});
+                enemyBullets.push({x:e.x, y:e.y+25, w:35, h:8, vx:-8, vy:-5, color: bulletColor});
             } else if(e.type === 'vulture') {
                 // Vulture shoots dual bullets
                 enemyBullets.push({x:e.x, y:e.y+15, w:25, h:6, vx:-11, vy:0, color: bulletColor});
@@ -3317,7 +3318,7 @@ spawnParticle(e.x, e.y+e.h/2, -3-Math.random()*2, (Math.random()-0.5)*3, 0.4, "r
             } else if(e.type === 'inferno_walker') {
                 // Shoots anti-air missile upwards
                 const aimError = (Math.random() - 0.5) * 20;
-                enemyBullets.push({ x: e.x+20, y: e.y-10, w: 10, h: 25, vx: -6 + aimError * 0.6, vy: -8 + aimError * 1.2, color: bulletColor, tracking: false });
+                enemyBullets.push({ x: e.x+20, y: e.y-10, w: 10, h: 25, vx: -5 + aimError * 0.6, vy: -6.5 + aimError * 1.2, color: bulletColor, tracking: false });
             } else if(e.type === 'acid_drone') {
                 enemyBullets.push({x:e.x, y:e.y+30, w:15, h:15, vx:-7, vy:2, color: bulletColor, isAcid: true});
                 enemyBullets.push({x:e.x, y:e.y+30, w:15, h:15, vx:-7, vy:-2, color: bulletColor, isAcid: true});
