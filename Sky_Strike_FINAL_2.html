@@ -2178,7 +2178,7 @@ function update(dt) {
             
             if(dist < empRadius && !e.empHit) {
                 e.empHit = true; // Hit once per EMP
-                e.hp -= 2; // Damage
+                e.hp -= 10; // Screen-clear: zabije i pancerovane pozemni jednotky
                 createExplosion(e.x + e.w/2, e.y + e.h/2, "#00ddff", 30);
                 
                 // Small hit stop on EMP hit
