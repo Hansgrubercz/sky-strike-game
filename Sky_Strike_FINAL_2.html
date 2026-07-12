@@ -1000,6 +1000,8 @@ window.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 
 let bullets=[], enemyBullets=[], buildings=[], backgroundBuildings=[], enemies=[], items=[], particles=[], mountains=[], clouds=[], volcanicRocks=[], iceFloes=[];
 let toxicBuildings=[], toxicPools=[], smokeParticles=[], acidRainDrops=[], toxicClouds=[], toxicScrollY=0;
+let l6Bubbles=[];
+const l6Parallax=[{x:0,speed:0.2,alpha:0.04,h:80,yF:0.15},{x:300,speed:0.5,alpha:0.06,h:60,yF:0.45},{x:600,speed:0.9,alpha:0.08,h:50,yF:0.70}];
 let cars=[], streetLights=[], searchlights=[];
 let temperature = 100; // Level 5 Arctic - weapon freeze mechanic
 
@@ -1460,7 +1462,7 @@ function transitionToLevel6() {
     cars=[]; streetLights=[]; searchlights=[];
     volcanicRocks=[]; mountains=[]; iceFloes=[];
     toxicBuildings=[]; toxicPools=[]; smokeParticles=[]; acidRainDrops=[]; toxicClouds=[];
-    toxicScrollY=0;
+    toxicScrollY=0; l6Bubbles=[]; l6Parallax[0].x=0; l6Parallax[1].x=300; l6Parallax[2].x=600;
     currentLevel=6; score=0; bossSpawned=false; lives=3; fuel=100;
     document.getElementById("levelVal").textContent="6";
     document.getElementById("levelName").textContent="TOXIC WASTELAND";
@@ -1783,11 +1785,12 @@ function update(dt) {
         for(let d of acidRainDrops){d.y+=d.speed;if(d.y>canvas.height+d.len){d.y=-d.len;d.x=Math.random()*canvas.width;}}
         for(let b of toxicBuildings){b.x-=b.scrollSpeed;if(b.x+b.w<-20)b.x=canvas.width+50+Math.random()*200;}
         for(let p of toxicPools){p.x-=0.8;p.phase+=0.03;if(p.x+p.w<-20)p.x=canvas.width+50+Math.random()*200;}
-        if(Math.random()<0.008&&toxicClouds.length<5) toxicClouds.push({x:Math.random()*canvas.width,y:-160,r:90+Math.random()*80,speed:1.2+Math.random()*0.8,phase:Math.random()*Math.PI*2});
+        for(let l of l6Parallax){l.x-=l.speed*dt;if(l.x<-canvas.width)l.x+=canvas.width;}
+        if(Math.random()<0.1) l6Bubbles.push({x:Math.random()*canvas.width,y:canvas.height-40,s:1+Math.random()*2,speed:1+Math.random()*2,offset:Math.random()*100});
+        for(let i=l6Bubbles.length-1;i>=0;i--){const bb=l6Bubbles[i];bb.y-=bb.speed*dt;bb.x+=Math.sin(plane.frame*0.05+bb.offset)*2*dt;if(bb.y<-50)l6Bubbles.splice(i,1);}
         for(let i=toxicClouds.length-1;i>=0;i--){toxicClouds[i].y+=toxicClouds[i].speed;toxicClouds[i].phase+=0.01;if(toxicClouds[i].y-toxicClouds[i].r>canvas.height)toxicClouds.splice(i,1);}
         if(Math.random()<0.12) for(let b of toxicBuildings) if(Math.random()<0.3) smokeParticles.push({x:b.x+b.chimneyX,y:canvas.height-b.h-b.chimneyH,vx:(Math.random()-0.4)*0.5,vy:-(0.4+Math.random()*0.7),r:8+Math.random()*10,life:1.0,green:Math.random()<0.6});
         for(let i=smokeParticles.length-1;i>=0;i--){const s=smokeParticles[i];s.x+=s.vx;s.y+=s.vy;s.r+=0.07;s.life-=0.007;if(s.life<=0)smokeParticles.splice(i,1);}
-        if(fuel>0){fuel=Math.max(0,fuel-0.01);if(DOM.fuelVal)DOM.fuelVal.textContent=Math.ceil(fuel)+'%';}
         plane.inToxicCloud=false;
         for(let c of toxicClouds){const dx=(plane.x+48)-c.x,dy=(plane.y+24)-c.y;if(Math.sqrt(dx*dx+dy*dy)<c.r-20){plane.inToxicCloud=true;break;}}
     }
@@ -8367,6 +8370,17 @@ function render() {
     if(currentLevel===6){
         const f=plane.frame;
         ctx.save();
+        // Gradient pozadí (fialová -> toxická zelená)
+        let g6=ctx.createLinearGradient(0,0,0,canvas.height);
+        g6.addColorStop(0,'#1a0033');g6.addColorStop(0.5,'#113311');g6.addColorStop(1,'#001a00');
+        ctx.fillStyle=g6;ctx.fillRect(0,0,canvas.width,canvas.height);
+        // Parallax toxické mraky (3 vrstvy)
+        for(let l of l6Parallax){
+            ctx.fillStyle=`rgba(51,255,0,${l.alpha})`;
+            const yP=canvas.height*l.yF;
+            ctx.fillRect(l.x,yP,canvas.width,l.h);
+            ctx.fillRect(l.x+canvas.width,yP,canvas.width,l.h);
+        }
         // Pruhy
         ctx.globalAlpha=0.06;ctx.strokeStyle='#39ff14';ctx.lineWidth=1;
         const so=toxicScrollY%60;
@@ -8398,60 +8412,22 @@ function render() {
             const cx=bx+b.chimneyX;ctx.fillStyle='#080f08';ctx.fillRect(cx-6,canvas.height-b.h-b.chimneyH,12,b.chimneyH);
             ctx.fillStyle=`rgba(255,80,0,${0.6+Math.sin(f*0.07+b.x)*0.4})`;ctx.beginPath();ctx.arc(cx,canvas.height-b.h-b.chimneyH-5,5,0,Math.PI*2);ctx.fill();
         }
-        // Kaluže
-        for(let p of toxicPools){const py=canvas.height-22;ctx.shadowBlur=10;ctx.shadowColor='#39ff14';ctx.fillStyle=`rgba(20,180,10,${0.45+Math.sin(p.phase)*0.15})`;ctx.beginPath();ctx.ellipse(p.x+p.w/2,py,p.w/2,10,0,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;}
+        // Kyselinová hladina s vlnami
+        ctx.fillStyle='rgba(51,255,0,0.7)';
+        ctx.beginPath();
+        ctx.moveTo(0,canvas.height);
+        for(let x=0;x<=canvas.width;x+=40){const wy=canvas.height-40+Math.sin(x*0.02+f*0.05)*15;ctx.lineTo(x,wy);}
+        ctx.lineTo(canvas.width,canvas.height);ctx.closePath();ctx.fill();
+        // Stoupající bubliny z kyseliny
+        ctx.fillStyle='rgba(51,255,0,0.6)';ctx.strokeStyle='rgba(255,255,255,0.4)';ctx.lineWidth=1;
+        for(let b of l6Bubbles){ctx.beginPath();ctx.arc(b.x,b.y,b.s*3,0,Math.PI*2);ctx.fill();ctx.stroke();}
         ctx.globalAlpha=1;
         // Oslepení
         if(plane.inToxicCloud){ctx.fillStyle='rgba(8,25,8,0.88)';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.globalCompositeOperation='destination-out';const vx=plane.x+48,vy=plane.y+24;const vg=ctx.createRadialGradient(vx,vy,25,vx,vy,140);vg.addColorStop(0,'rgba(0,0,0,1)');vg.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=vg;ctx.beginPath();ctx.arc(vx,vy,140,0,Math.PI*2);ctx.fill();ctx.globalCompositeOperation='source-over';}
         ctx.restore();
     }
     
-    // 🌊 ABYSSAL DEEP underwater effects
-    if(currentLevel === 6) {
-        // GOD RAYS - swaying light beams from surface
-        ctx.save();
-        ctx.globalAlpha = 0.15;
-        const rayCount = 6;
-        for(let i = 0; i < rayCount; i++) {
-            const rayX = (i / rayCount) * canvas.width + Math.sin(plane.frame * 0.005 + i) * 50;
-            const rayGrad = ctx.createLinearGradient(rayX, 0, rayX + 80, canvas.height);
-            rayGrad.addColorStop(0, "rgba(100,200,255,0.3)");
-            rayGrad.addColorStop(0.5, "rgba(100,200,255,0.1)");
-            rayGrad.addColorStop(1, "rgba(100,200,255,0)");
-            ctx.fillStyle = rayGrad;
-            ctx.fillRect(rayX, 0, 80, canvas.height);
-        }
-        ctx.restore();
-        
-        // MARINE SNOW - slowly falling particles
-        ctx.fillStyle = "rgba(200,220,255,0.4)";
-        for(let i = 0; i < 30; i++) {
-            const snowX = (i * 47 + plane.frame * 0.2) % canvas.width;
-            const snowY = (i * 53 + plane.frame * 0.5) % canvas.height;
-            const snowSize = 1 + Math.sin(i) * 0.5;
-            ctx.globalAlpha = 0.3 + Math.sin(plane.frame * 0.01 + i) * 0.2;
-            ctx.beginPath();
-            ctx.arc(snowX, snowY, snowSize, 0, Math.PI * 2);
-            ctx.fill();
-        }
-        ctx.globalAlpha = 1;
-        
-        // RISING BUBBLES - from ocean floor
-        ctx.strokeStyle = "rgba(150,200,255,0.3)";
-        ctx.lineWidth = 1;
-        for(let i = 0; i < 15; i++) {
-            const bubbleX = (i * 73 + Math.sin(plane.frame * 0.01 + i) * 20) % canvas.width;
-            const bubbleY = canvas.height - ((plane.frame * (1 + i * 0.1)) % (canvas.height + 50));
-            const bubbleSize = 2 + Math.sin(i) * 2;
-            ctx.globalAlpha = 0.4;
-            ctx.beginPath();
-            ctx.arc(bubbleX, bubbleY, bubbleSize, 0, Math.PI * 2);
-            ctx.stroke();
-        }
-        ctx.globalAlpha = 1;
-    }
-    
-    // EPIC OCEAN STORM effects
+        // EPIC OCEAN STORM effects
     if(currentLevel === 3) {
         // Lightning strikes - random flashes
         if(Math.random() > 0.97) {
@@ -9940,6 +9916,6 @@ function renderFinalLeaderboard(scores) {
 }
 
 </script>
-<div id="buildTag" style="position:fixed; left:8px; bottom:6px; z-index:400; font-size:10px; color:rgba(255,255,255,0.35); font-family:monospace; pointer-events:none;">build 2026-07-12-G</div>
+<div id="buildTag" style="position:fixed; left:8px; bottom:6px; z-index:400; font-size:10px; color:rgba(255,255,255,0.35); font-family:monospace; pointer-events:none;">build 2026-07-12-H</div>
 </body>
 </html>
