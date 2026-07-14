@@ -1456,6 +1456,64 @@ function transitionToLevel5() {
     }
 }
 
+function createToxicStructure(isBack) {
+    const type = Math.random() > 0.5 ? 'toxic_pipe' : 'mutant_plant';
+    const h = (canvas.height * 0.15) + Math.random() * (isBack ? canvas.height * 0.25 : canvas.height * 0.35);
+    const w = type === 'toxic_pipe' ? 60 + Math.random() * 40 : 80 + Math.random() * 60;
+    return {
+        x: canvas.width + Math.random() * 200,
+        y: canvas.height - h - 40,
+        w: w, h: h, isBack: isBack,
+        type: type,
+        glowOffset: Math.random() * Math.PI * 2,
+        branches: Math.floor(Math.random() * 3) + 1
+    };
+}
+
+function drawToxicStructure(b) {
+    ctx.save();
+    if(b.type === 'toxic_pipe') {
+        const pipeColor = b.isBack ? "#1a221a" : "#2a352a";
+        const gooColor = "#33ff00";
+        ctx.fillStyle = pipeColor;
+        ctx.fillRect(b.x, b.y, b.w, b.h);
+        const pulse = Math.abs(Math.sin(plane.frame * 0.05 + b.glowOffset));
+        ctx.fillStyle = `rgba(51, 255, 0, ${0.3 + pulse * 0.5})`;
+        ctx.shadowBlur = 15; ctx.shadowColor = gooColor;
+        for(let i=0; i<3; i++) {
+            const gapY = b.y + b.h * (0.2 + i*0.3);
+            ctx.fillRect(b.x - 5, gapY, b.w + 10, 8);
+            if(!b.isBack && pulse > 0.5) {
+                ctx.fillRect(b.x + b.w/2 - 2, gapY, 4, 30 + pulse*20);
+            }
+        }
+        ctx.shadowBlur = 0;
+    }
+    else if(b.type === 'mutant_plant') {
+        const plantBase = b.isBack ? "#1f0f2e" : "#311847";
+        ctx.fillStyle = plantBase;
+        ctx.beginPath();
+        ctx.moveTo(b.x + b.w/2, b.y + b.h);
+        ctx.quadraticCurveTo(b.x - 20, b.y + b.h/2, b.x + b.w/2, b.y);
+        ctx.quadraticCurveTo(b.x + b.w + 20, b.y + b.h/2, b.x + b.w/2, b.y + b.h);
+        ctx.fill();
+        ctx.strokeStyle = `rgba(136, 255, 0, ${0.4 + Math.sin(plane.frame*0.08)*0.3})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(b.x + b.w/2, b.y + b.h);
+        ctx.quadraticCurveTo(b.x, b.y + b.h*0.7, b.x + b.w/2, b.y + b.h*0.3);
+        ctx.stroke();
+        for(let i=0; i<b.branches; i++) {
+            const branchY = b.y + i*40 + 20;
+            ctx.fillStyle = "#ff00ff";
+            ctx.beginPath(); ctx.arc(b.x + (i%2===0?-10:b.w+10), branchY, 15, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = "#000";
+            ctx.beginPath(); ctx.arc(b.x + (i%2===0?-10:b.w+10), branchY, 8, 0, Math.PI*2); ctx.fill();
+        }
+    }
+    ctx.restore();
+}
+
 function transitionToLevel6() {
     buildings=[]; backgroundBuildings=[]; enemies=[];
     bullets=[]; enemyBullets=[]; items=[];
@@ -1466,21 +1524,8 @@ function transitionToLevel6() {
     currentLevel=6; score=0; bossSpawned=false; lives=3; fuel=100;
     document.getElementById("levelVal").textContent="6";
     document.getElementById("levelName").textContent="TOXIC WASTELAND";
-    for(let i=0;i<120;i++) acidRainDrops.push({
-        x:Math.random()*canvas.width, y:Math.random()*canvas.height,
-        len:10+Math.random()*20, speed:12+Math.random()*12,
-        opacity:0.35+Math.random()*0.5, thick:0.8+Math.random()*1.4
-    });
-    for(let i=0;i<12;i++) toxicBuildings.push({
-        x:i*(canvas.width/9)+Math.random()*60, w:40+Math.random()*60,
-        h:80+Math.random()*140, chimneyX:10+Math.random()*30,
-        chimneyH:60+Math.random()*80,
-        layer:i%2===0?'back':'front', scrollSpeed:i%2===0?0.3:0.7
-    });
-    for(let i=0;i<8;i++) toxicPools.push({
-        x:i*(canvas.width/7)+Math.random()*80, w:50+Math.random()*90,
-        phase:Math.random()*Math.PI*2
-    });
+    for(let i=0;i<5;i++){const st=createToxicStructure(true);st.x=i*(canvas.width/4)+Math.random()*80;toxicBuildings.push(st);}
+    for(let i=0;i<4;i++){const st=createToxicStructure(false);st.x=i*(canvas.width/3)+120+Math.random()*80;toxicBuildings.push(st);}
 }
 
 function transitionToLevel7() {
@@ -1782,18 +1827,13 @@ function createBuilding(isBack) {
 
 function update(dt) {
     if(currentLevel===6){
-        toxicScrollY+=1.5;
-        for(let d of acidRainDrops){d.y+=d.speed;if(d.y>canvas.height+d.len){d.y=-d.len;d.x=Math.random()*canvas.width;}}
-        for(let b of toxicBuildings){b.x-=b.scrollSpeed;if(b.x+b.w<-20)b.x=canvas.width+50+Math.random()*200;}
-        for(let p of toxicPools){p.x-=0.8;p.phase+=0.03;if(p.x+p.w<-20)p.x=canvas.width+50+Math.random()*200;}
+        for(let i=toxicBuildings.length-1;i>=0;i--){const tb=toxicBuildings[i];tb.x-=(tb.isBack?3.0:6.0)*dt*gameSpeedMult;if(tb.x+tb.w<-200)toxicBuildings.splice(i,1);}
+        const backT=toxicBuildings.filter(tb=>tb.isBack), frontT=toxicBuildings.filter(tb=>!tb.isBack);
+        if(backT.length===0||Math.max(...backT.map(tb=>tb.x))<canvas.width-400)toxicBuildings.push(createToxicStructure(true));
+        if(frontT.length===0||Math.max(...frontT.map(tb=>tb.x))<canvas.width-500)toxicBuildings.push(createToxicStructure(false));
         for(let l of l6Parallax){l.x-=l.speed*dt;if(l.x<-canvas.width)l.x+=canvas.width;}
         if(Math.random()<0.1) l6Bubbles.push({x:Math.random()*canvas.width,y:canvas.height-40,s:1+Math.random()*2,speed:1+Math.random()*2,offset:Math.random()*100});
         for(let i=l6Bubbles.length-1;i>=0;i--){const bb=l6Bubbles[i];bb.y-=bb.speed*dt;bb.x+=Math.sin(plane.frame*0.05+bb.offset)*2*dt;if(bb.y<-50)l6Bubbles.splice(i,1);}
-        for(let i=toxicClouds.length-1;i>=0;i--){toxicClouds[i].y+=toxicClouds[i].speed;toxicClouds[i].phase+=0.01;if(toxicClouds[i].y-toxicClouds[i].r>canvas.height)toxicClouds.splice(i,1);}
-        if(Math.random()<0.12) for(let b of toxicBuildings) if(Math.random()<0.3) smokeParticles.push({x:b.x+b.chimneyX,y:canvas.height-b.h-b.chimneyH,vx:(Math.random()-0.4)*0.5,vy:-(0.4+Math.random()*0.7),r:8+Math.random()*10,life:1.0,green:Math.random()<0.6});
-        for(let i=smokeParticles.length-1;i>=0;i--){const s=smokeParticles[i];s.x+=s.vx;s.y+=s.vy;s.r+=0.07;s.life-=0.007;if(s.life<=0)smokeParticles.splice(i,1);}
-        plane.inToxicCloud=false;
-        for(let c of toxicClouds){const dx=(plane.x+48)-c.x,dy=(plane.y+24)-c.y;if(Math.sqrt(dx*dx+dy*dy)<c.r-20){plane.inToxicCloud=true;break;}}
     }
     if(currentLevel === 7) {
         l7ScrollX += 1.5;
@@ -2838,13 +2878,13 @@ function update(dt) {
         }
         if(currentLevel === 6) {
             const rand = Math.random();
-            if(rand < 0.4) {
-                enemies.push({ x: canvas.width + 100, y: 50 + Math.random() * (canvas.height - 250), w: 70, h: 40, s: 10 * gameSpeedMult, type: 'mutant_wasp', shootT: 0, hp: 2, bobOffset: Math.random()*100 });
-            } else if(rand < 0.75) {
-                enemies.push({ x: canvas.width + 100, y: 80 + Math.random() * (canvas.height - 350), w: 70, h: 60, s: 4 * gameSpeedMult, type: 'acid_drone', shootT: 0, hp: 5, bobOffset: Math.random()*100 });
-            } else {
-                enemies.push({ x: canvas.width + 100, y: canvas.height - 90, w: 80, h: 60, s: 3 * gameSpeedMult, type: 'sludge_crawler', shootT: 0, hp: 5, bobOffset: Math.random()*100 });
-            }
+            let type, hp, speed, yPos;
+            if(rand < 0.28) { type = 'mutant_wasp'; hp = 1; speed = 10; yPos = 50 + Math.random() * (canvas.height - 250); }
+            else if(rand < 0.52) { type = 'acid_drone'; hp = 3; speed = 4; yPos = 80 + Math.random() * (canvas.height - 350); }
+            else if(rand < 0.68) { type = 'sludge_crawler'; hp = 4; speed = 3; yPos = canvas.height - 90; }
+            else if(rand < 0.84) { type = 'toxic_spitter'; hp = 5; speed = 3; yPos = 70 + Math.random() * (canvas.height - 300); }
+            else { type = 'homing_spore'; hp = 2; speed = 5; yPos = 60 + Math.random() * (canvas.height - 280); }
+            enemies.push({ x: canvas.width + 100, y: yPos, w: type === 'sludge_crawler' ? 80 : type === 'toxic_spitter' ? 75 : 60, h: type === 'mutant_wasp' ? 40 : type === 'homing_spore' ? 50 : 60, s: speed * gameSpeedMult, type: type, shootT: 0, hp: hp, bobOffset: Math.random()*100, glowPhase: Math.random() * Math.PI * 2 });
         } else if(currentLevel === 7) {
             const rand = Math.random();
             if(rand < 0.25) {
@@ -3239,6 +3279,12 @@ spawnParticle(e.x, e.y+e.h/2, -3-Math.random()*2, (Math.random()-0.5)*3, 0.4, "r
             e.y += Math.sin((plane.frame + e.bobOffset) * 0.03) * 1.5 * dt;
         } else if(e.type === 'sludge_crawler') {
             e.y = (canvas.height - 90) + Math.abs(Math.sin((plane.frame + e.bobOffset) * 0.1)) * 5;
+        } else if(e.type === 'toxic_spitter') {
+            e.y += Math.sin((plane.frame + e.bobOffset) * 0.04) * 2 * dt; e.glowPhase += 0.05 * dt;
+        } else if(e.type === 'homing_spore') {
+            const dySp = (plane.y + 20) - (e.y + e.h/2);
+            e.y += Math.sign(dySp) * Math.min(Math.abs(dySp) * 0.015, 2) * dt;
+            e.glowPhase += 0.08 * dt;
         } else if(e.type === 'interceptor') {
             if(e.divePhase === 'dive') {
                 const dy = e.diveTarget - (e.y + e.h/2);
@@ -3292,9 +3338,11 @@ spawnParticle(e.x, e.y+e.h/2, -3-Math.random()*2, (Math.random()-0.5)*3, 0.4, "r
         else if(e.type === 'ice_mech') { shootDelay = 100; bulletColor = '#bae6fd'; }
         else if(e.type === 'blizzard_swarm') { shootDelay = 999; bulletColor = '#ffffff'; }
         // L6 TOXIC enemies
-        else if(e.type === 'acid_drone') { shootDelay = 110; bulletColor = '#88ff00'; }
-        else if(e.type === 'mutant_wasp') { shootDelay = 60; bulletColor = '#cc00ff'; }
-        else if(e.type === 'sludge_crawler') { shootDelay = 120; bulletColor = '#00ff00'; }
+        else if(e.type === 'acid_drone') { shootDelay = 110; bulletColor = '#ff6600'; }
+        else if(e.type === 'mutant_wasp') { shootDelay = 60; bulletColor = '#ff0044'; }
+        else if(e.type === 'sludge_crawler') { shootDelay = 120; bulletColor = '#ff2200'; }
+        else if(e.type === 'toxic_spitter') { shootDelay = 90; bulletColor = '#ff4400'; }
+        else if(e.type === 'homing_spore') { shootDelay = 999; bulletColor = '#ff0000'; }
         // L7 SPACE enemies
         else if(e.type === 'interceptor') { shootDelay = 50; bulletColor = '#ff003c'; }
         else if(e.type === 'shield_drone') { shootDelay = 90; bulletColor = '#ff6688'; }
@@ -3338,6 +3386,12 @@ spawnParticle(e.x, e.y+e.h/2, -3-Math.random()*2, (Math.random()-0.5)*3, 0.4, "r
                 enemyBullets.push({x:e.x, y:e.y+20, w:20, h:4, vx:-14, vy:0, color: bulletColor});
             } else if(e.type === 'sludge_crawler') {
                 enemyBullets.push({x:e.x+20, y:e.y, w:12, h:12, vx:-6, vy:-10, color: bulletColor, gravity: 0.15});
+            } else if(e.type === 'toxic_spitter') {
+                enemyBullets.push({x:e.x, y:e.y+e.h/2-5, w:14, h:14, vx:-9, vy:-3, color: bulletColor});
+                enemyBullets.push({x:e.x, y:e.y+e.h/2, w:14, h:14, vx:-10, vy:0, color: bulletColor});
+                enemyBullets.push({x:e.x, y:e.y+e.h/2+5, w:14, h:14, vx:-9, vy:3, color: bulletColor});
+            } else if(e.type === 'homing_spore') {
+                // Kamikaze - nestřílí
             } else if(e.type === 'interceptor') {
                 enemyBullets.push({x:e.x, y:e.y+e.h/2, w:18, h:5, vx:-12, vy:0, color: bulletColor});
             } else if(e.type === 'shield_drone') {
@@ -3459,7 +3513,8 @@ spawnParticle(e.x, e.y+e.h/2, -3-Math.random()*2, (Math.random()-0.5)*3, 0.4, "r
                     else if(en.type === 'fighter' || en.type === 'frost_drone' || 
                             en.type === 'ash_phantom' || en.type === 'police_drone' ||
                             en.type === 'seagull' || en.type === 'magnetic_mine' ||
-                            en.type === 'laser_drone') {
+                            en.type === 'laser_drone' || en.type === 'mutant_wasp' ||
+                            en.type === 'acid_drone' || en.type === 'homing_spore') {
                         scoreValue = 150; pickupValue = 150; explosionColor = "#ffd700";
                     }
                     // ELITE (500 pts)
@@ -3467,7 +3522,8 @@ spawnParticle(e.x, e.y+e.h/2, -3-Math.random()*2, (Math.random()-0.5)*3, 0.4, "r
                             en.type === 'sandstorm' || en.type === 'pyro_drone' ||
                             en.type === 'magma_bomber' || en.type === 'ice_mech' ||
                             en.type === 'crystal_sentinel' || en.type === 'submarine' ||
-                            en.type === 'inferno_walker') {
+                            en.type === 'inferno_walker' || en.type === 'sludge_crawler' ||
+                            en.type === 'toxic_spitter') {
                         scoreValue = 500; pickupValue = 500; explosionColor = "#ff6600";
                     }
                     
@@ -5312,6 +5368,50 @@ function drawEnemy(e) {
     ctx.translate(e.x + e.w/2, e.y + e.h/2);
 
     // === L6 TOXIC ENEMIES ===
+    // ☢️ TOXIC SPITTER
+    if(e.type === 'toxic_spitter') {
+        const pulse = 0.6 + Math.sin((e.glowPhase||0)) * 0.4;
+        ctx.scale(-1, 1);
+        ctx.fillStyle = '#1a3300';
+        ctx.shadowBlur = 12; ctx.shadowColor = '#88ff00';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 32, 22, 0, 0, Math.PI*2);
+        ctx.fill();
+        ctx.strokeStyle = '#44ff00'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.fillStyle = `rgba(136,255,0,${0.5 + pulse*0.5})`;
+        ctx.beginPath(); ctx.ellipse(10, 0, 14, 10, 0, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#33ff00';
+        ctx.beginPath(); ctx.arc(28, -5, 5, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(28, 0, 5, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(28, 5, 5, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.restore(); return;
+    }
+    // 🎯 HOMING SPORE
+    if(e.type === 'homing_spore') {
+        const pulse = 0.5 + Math.sin((e.glowPhase||0) * 1.5) * 0.5;
+        ctx.globalAlpha = 0.3 * pulse;
+        ctx.fillStyle = '#ff6600';
+        ctx.beginPath(); ctx.arc(0, 0, 30, 0, Math.PI*2); ctx.fill();
+        ctx.globalAlpha = 1;
+        const sporeGrad = ctx.createRadialGradient(-6, -6, 0, 0, 0, 22);
+        sporeGrad.addColorStop(0, '#ffcc00');
+        sporeGrad.addColorStop(0.5, '#ff6600');
+        sporeGrad.addColorStop(1, '#cc2200');
+        ctx.fillStyle = sporeGrad;
+        ctx.shadowBlur = 18 * pulse; ctx.shadowColor = '#ff6600';
+        ctx.beginPath(); ctx.arc(0, 0, 22, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#ff4400';
+        for(let i = 0; i < 6; i++) {
+            const a = (i/6) * Math.PI*2 + (e.glowPhase||0)*0.1;
+            ctx.beginPath(); ctx.arc(Math.cos(a)*20, Math.sin(a)*20, 5, 0, Math.PI*2); ctx.fill();
+        }
+        ctx.fillStyle = '#fff';
+        ctx.shadowBlur = 10; ctx.shadowColor = '#ffff00';
+        ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.restore(); return;
+    }
     if(e.type === 'mutant_wasp') {
         ctx.scale(-1, 1); // Face left
         ctx.fillStyle = '#7700cc'; ctx.shadowBlur = 10; ctx.shadowColor = '#cc00ff';
@@ -8382,37 +8482,9 @@ function render() {
             ctx.fillRect(l.x,yP,canvas.width,l.h);
             ctx.fillRect(l.x+canvas.width,yP,canvas.width,l.h);
         }
-        // Pruhy
-        ctx.globalAlpha=0.06;ctx.strokeStyle='#39ff14';ctx.lineWidth=1;
-        const so=toxicScrollY%60;
-        for(let i=0;i<canvas.height+60;i+=60){ctx.beginPath();ctx.moveTo(0,i-so);ctx.lineTo(canvas.width,i-so);ctx.stroke();}
-        ctx.globalAlpha=1;
-        // Zadní budovy
-        for(let b of toxicBuildings.filter(b=>b.layer==='back')){
-            const bx=b.x,by=canvas.height-b.h;
-            ctx.fillStyle='#0d1a0d';ctx.fillRect(bx,by,b.w,b.h);
-            ctx.strokeStyle='#1a3a1a';ctx.lineWidth=1.5;ctx.strokeRect(bx,by,b.w,b.h);
-            for(let wy=by+12;wy<canvas.height-15;wy+=20) for(let wx=bx+8;wx<bx+b.w-8;wx+=16){ctx.fillStyle=Math.sin(f*0.02+wx+wy)>0.3?'rgba(57,255,20,0.35)':'rgba(20,40,20,0.8)';ctx.fillRect(wx,wy,8,10);}
-            const cx=bx+b.chimneyX;ctx.fillStyle='#0a150a';ctx.fillRect(cx-5,canvas.height-b.h-b.chimneyH,10,b.chimneyH);
-            ctx.fillStyle=`rgba(255,50,0,${0.5+Math.sin(f*0.05+b.x)*0.5})`;ctx.beginPath();ctx.arc(cx,canvas.height-b.h-b.chimneyH-4,4,0,Math.PI*2);ctx.fill();
-        }
-        // Kouř
-        for(let s of smokeParticles){ctx.globalAlpha=s.life*0.5;ctx.fillStyle=s.green?'rgba(57,255,20,0.7)':'rgba(50,65,50,0.8)';ctx.shadowBlur=s.green?10:0;ctx.shadowColor='#39ff14';ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();}
-        ctx.shadowBlur=0;ctx.globalAlpha=1;
-        // Kyselý déšť
-        for(let d of acidRainDrops){ctx.globalAlpha=d.opacity;ctx.strokeStyle='#39ff14';ctx.lineWidth=d.thick;ctx.shadowBlur=3;ctx.shadowColor='#39ff14';ctx.beginPath();ctx.moveTo(d.x,d.y);ctx.lineTo(d.x-2,d.y+d.len);ctx.stroke();}
-        ctx.shadowBlur=0;ctx.globalAlpha=1;
-        // Toxické mraky
-        for(let c of toxicClouds){const a=0.35+Math.sin(c.phase)*0.1;const g=ctx.createRadialGradient(c.x,c.y,0,c.x,c.y,c.r);g.addColorStop(0,`rgba(57,255,20,${a})`);g.addColorStop(0.5,`rgba(31,94,11,${a*0.5})`);g.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(c.x,c.y,c.r,0,Math.PI*2);ctx.fill();}
-        // Přední budovy
-        for(let b of toxicBuildings.filter(b=>b.layer==='front')){
-            const bx=b.x,by=canvas.height-b.h;
-            ctx.fillStyle='#0a140a';ctx.fillRect(bx,by,b.w,b.h);
-            ctx.strokeStyle='#183018';ctx.lineWidth=1.5;ctx.strokeRect(bx,by,b.w,b.h);
-            for(let wy=by+12;wy<canvas.height-15;wy+=20) for(let wx=bx+8;wx<bx+b.w-8;wx+=16){ctx.fillStyle=Math.sin(f*0.03+wx*0.1+wy*0.05)>0.2?'rgba(57,255,20,0.4)':'rgba(15,30,15,0.9)';ctx.fillRect(wx,wy,8,10);}
-            const cx=bx+b.chimneyX;ctx.fillStyle='#080f08';ctx.fillRect(cx-6,canvas.height-b.h-b.chimneyH,12,b.chimneyH);
-            ctx.fillStyle=`rgba(255,80,0,${0.6+Math.sin(f*0.07+b.x)*0.4})`;ctx.beginPath();ctx.arc(cx,canvas.height-b.h-b.chimneyH-5,5,0,Math.PI*2);ctx.fill();
-        }
+        // Překážky: toxické trubky a mutantní rostliny (1:1 dle L6 reference)
+        for(const tb of toxicBuildings){ if(tb.isBack && tb.x+tb.w>0 && tb.x<canvas.width) drawToxicStructure(tb); }
+        for(const tb of toxicBuildings){ if(!tb.isBack && tb.x+tb.w>0 && tb.x<canvas.width) drawToxicStructure(tb); }
         // Kyselinová hladina s vlnami
         ctx.fillStyle='rgba(51,255,0,0.7)';
         ctx.beginPath();
@@ -8423,8 +8495,6 @@ function render() {
         ctx.fillStyle='rgba(51,255,0,0.6)';ctx.strokeStyle='rgba(255,255,255,0.4)';ctx.lineWidth=1;
         for(let b of l6Bubbles){ctx.beginPath();ctx.arc(b.x,b.y,b.s*3,0,Math.PI*2);ctx.fill();ctx.stroke();}
         ctx.globalAlpha=1;
-        // Oslepení
-        if(plane.inToxicCloud){ctx.fillStyle='rgba(8,25,8,0.88)';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.globalCompositeOperation='destination-out';const vx=plane.x+48,vy=plane.y+24;const vg=ctx.createRadialGradient(vx,vy,25,vx,vy,140);vg.addColorStop(0,'rgba(0,0,0,1)');vg.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=vg;ctx.beginPath();ctx.arc(vx,vy,140,0,Math.PI*2);ctx.fill();ctx.globalCompositeOperation='source-over';}
         ctx.restore();
     }
     
@@ -9175,6 +9245,19 @@ spawnParticle(eruptX, eruptY, Math.cos(angle)*speed, Math.sin(angle)*speed, 0.5+
             ctx.fill();
             ctx.globalAlpha = 1;
         }
+        if(eb.isAcid) {
+            // Kyselina je kulatá s pulzním halo (L6 reference)
+            ctx.shadowBlur = 10; ctx.shadowColor = eb.color;
+            ctx.beginPath();
+            ctx.arc(eb.x + eb.w/2, eb.y + eb.h/2, eb.w/2 + Math.abs(Math.sin(plane.frame * 0.5)) * 3, 0, Math.PI * 2);
+            ctx.globalAlpha = 0.2;
+            ctx.fillStyle = "#88ff00";
+            ctx.fill();
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = eb.color;
+            ctx.beginPath(); ctx.arc(eb.x+eb.w/2, eb.y+eb.h/2, eb.w/2, 0, Math.PI*2); ctx.fill();
+            return;
+        }
         ctx.shadowBlur = 0;
         ctx.fillStyle = 'rgba(0,0,0,0.7)';
         ctx.fillRect(eb.x - 2, eb.y - 2, eb.w + 4, eb.h + 4);
@@ -9917,6 +10000,6 @@ function renderFinalLeaderboard(scores) {
 }
 
 </script>
-<div id="buildTag" style="position:fixed; left:8px; bottom:6px; z-index:400; font-size:10px; color:rgba(255,255,255,0.35); font-family:monospace; pointer-events:none;">build 2026-07-12-I</div>
+<div id="buildTag" style="position:fixed; left:8px; bottom:6px; z-index:400; font-size:10px; color:rgba(255,255,255,0.35); font-family:monospace; pointer-events:none;">build 2026-07-12-K</div>
 </body>
 </html>
