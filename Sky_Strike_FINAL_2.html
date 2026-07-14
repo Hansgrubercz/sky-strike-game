@@ -1001,6 +1001,8 @@ window.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 let bullets=[], enemyBullets=[], buildings=[], backgroundBuildings=[], enemies=[], items=[], particles=[], mountains=[], clouds=[], volcanicRocks=[], iceFloes=[];
 let toxicBuildings=[], toxicPools=[], smokeParticles=[], acidRainDrops=[], toxicClouds=[], toxicScrollY=0;
 let l6Bubbles=[];
+let l7Portal = { angle: 0, pulsePhase: 0, x: 0, y: 0 };
+let l7Asteroids = [];
 const l6Parallax=[{x:0,speed:0.2,alpha:0.04,h:80,yF:0.15},{x:300,speed:0.5,alpha:0.06,h:60,yF:0.45},{x:600,speed:0.9,alpha:0.08,h:50,yF:0.70}];
 let cars=[], streetLights=[], searchlights=[];
 let temperature = 100; // Level 5 Arctic - weapon freeze mechanic
@@ -1545,6 +1547,24 @@ function transitionToLevel7() {
         buildings.push(createBuilding(false));
         buildings[buildings.length-1].x = i * 350;
     }
+
+        l7Asteroids = [];
+        for(let i = 0; i < 8; i++) {
+            l7Asteroids.push({
+                x: Math.random() * canvas.width,
+                y: 60 + Math.random() * (canvas.height - 120),
+                r: 18 + Math.random() * 28,
+                speed: 0.4 + Math.random() * 0.8,
+                rotSpeed: (Math.random() - 0.5) * 0.008,
+                angle: Math.random() * Math.PI * 2,
+                seed: Math.floor(Math.random() * 1000),
+                craterCount: 2 + Math.floor(Math.random() * 3),
+            });
+        }
+        // Portál — výchozí pozice
+        l7Portal.x = canvas.width - 80;
+        l7Portal.y = canvas.height / 2;
+    
 }
 
 
@@ -1649,22 +1669,26 @@ function takeDmg() {
 
 function createBuilding(isBack) {
     if(currentLevel === 7) {
-        // L7: Laser gates (foreground) nebo space panels (background)
-        if(!isBack && Math.random() < 0.35) {
-            const patterns = ['blink', 'blink', 'sweep', 'pulse'];
-            return {
-                x: canvas.width + 50,
-                y: 40, w: 22, h: canvas.height - 80,
-                isBack: false, type: 'laser_gate',
-                pattern: patterns[Math.floor(Math.random() * patterns.length)],
-                laserTimer: 0, laserActive: true, dmgCooldown: 0,
-                gapPos: 0.5, gapSize: 90
-            };
-        }
-        const h = 40 + Math.random() * 80;
+        const rand = Math.random();
+        const type = rand > 0.65 ? 'laser_gate' : 'metal_pillar';
+        const fromTop = Math.random() > 0.5;
+        const h = canvas.height * 0.15 + Math.random() * (fromTop ? canvas.height*0.2 : canvas.height*0.3);
+        const w = type === 'laser_gate' ? 30 : 60 + Math.random() * 60;
+        // Náhodný pattern pro laser gate
+        const patterns = ['blink', 'blink', 'sweep', 'pulse']; // blink 2x častější
+        const pattern = type === 'laser_gate' ? patterns[Math.floor(Math.random() * patterns.length)] : 'none';
+        const gapSize = 90 + Math.random() * 40; // mezera pro sweep/pulse
         return {
-            x: canvas.width, y: isBack ? Math.random() * (canvas.height - h) : canvas.height - h,
-            w: 60 + Math.random() * 80, h: h, isBack: isBack, type: 'space_panel'
+            x: canvas.width + Math.random() * 300,
+            y: fromTop ? 0 : canvas.height - h,
+            w, h, isBack, type,
+            fromTop,
+            glowOffset: Math.random() * Math.PI * 2,
+            laserActive: type === 'laser_gate',
+            laserTimer: Math.random() * 120,
+            pattern, gapSize,
+            gapPos: 0.5, // 0-1 pozice mezery (pro sweep)
+            dmgCooldown: 0
         };
     }
     if(currentLevel === 3) {
@@ -1836,7 +1860,28 @@ function update(dt) {
         for(let i=l6Bubbles.length-1;i>=0;i--){const bb=l6Bubbles[i];bb.y-=bb.speed*dt;bb.x+=Math.sin(plane.frame*0.05+bb.offset)*2*dt;if(bb.y<-50)l6Bubbles.splice(i,1);}
     }
     if(currentLevel === 7) {
-        l7ScrollX += 1.5;
+        l7ScrollX += 2;
+    }
+    if(currentLevel === 7) {
+        // Portál animace
+        l7Portal.angle += 0.018;
+        l7Portal.pulsePhase += 0.04;
+        l7Portal.x = canvas.width - 90;
+        l7Portal.y = canvas.height / 2 + Math.sin(plane.frame * 0.005) * 20;
+
+        // Asteroidy scroll + rotace
+        for(let i = 0; i < l7Asteroids.length; i++) {
+            const a = l7Asteroids[i];
+            a.x -= a.speed;
+            a.angle += a.rotSpeed;
+            if(a.x < -a.r * 2) {
+                a.x = canvas.width + a.r + Math.random() * 200;
+                a.y = 60 + Math.random() * (canvas.height - 120);
+                a.speed = 0.4 + Math.random() * 0.8;
+            }
+        }
+    }
+    if(currentLevel === 7) {
         startSpaceAmbient();
         // L7 bubliny (ne, to jsou L6 - L7 má ambient exploze)
         distantExpTimer++;
@@ -2490,6 +2535,8 @@ function update(dt) {
                 const gate = list[i];
                 gate.laserTimer = (gate.laserTimer || 0) + dt;
                 gate.dmgCooldown = (gate.dmgCooldown || 0) - dt;
+
+                // Pattern logika
                 if(gate.pattern === 'sweep') {
                     gate.laserActive = true;
                     gate.gapPos = (Math.sin(gate.laserTimer * 0.03) + 1) / 2;
@@ -2499,7 +2546,10 @@ function update(dt) {
                 } else {
                     gate.laserActive = Math.sin(gate.laserTimer * 0.04) > 0;
                 }
+
+                // Kolize jen foreground + jen aktivní laser + cooldown
                 if(idx === 1 && gate.laserActive && gate.dmgCooldown <= 0) {
+                    // Zmenšený hitbox pro fair play
                     const px = plane.x + 8, py = plane.y + 8;
                     const pw = plane.w - 16, ph = plane.h - 16;
                     const inXRange = px + pw > gate.x && px < gate.x + gate.w;
@@ -2510,6 +2560,7 @@ function update(dt) {
                         const inGap = py + ph > gapCenter - gapHalf && py < gapCenter + gapHalf;
                         if(inXRange && !inGap && py + ph > gate.y && py < gate.y + gate.h) hit = true;
                     } else {
+                        // Blink - jen výška gate, ne celá obrazovka
                         if(inXRange && py + ph > gate.y && py < gate.y + gate.h) hit = true;
                     }
                     if(hit) { takeDmg(); gate.dmgCooldown = 90; }
@@ -2803,7 +2854,7 @@ function update(dt) {
                     glowPhase: Math.random() * Math.PI * 2
                 });
             }
-        } else {
+        } else if(currentLevel === 1) {
             // NYC enemies
             const rand = Math.random();
             let type;
@@ -7643,64 +7694,94 @@ function drawNYCBuilding(b) {
     
     // L7: Laser gates a space panely
     if(currentLevel === 7) {
-        if(b.type === 'laser_gate') {
-            const active = b.laserActive;
-            ctx.save();
-            // Gate rámeček
-            ctx.strokeStyle = active ? '#ff003c' : '#440011'; ctx.lineWidth = 3;
-            ctx.shadowBlur = active ? 20 : 5; ctx.shadowColor = '#ff003c';
-            ctx.strokeRect(b.x, b.y, b.w, b.h);
-            if(active) {
-                if(b.pattern === 'sweep' || b.pattern === 'pulse') {
-                    const gapCenter = b.y + (b.h * (b.gapPos || 0.5));
-                    const gapHalf = (b.gapSize || 90) / 2;
-                    // Laser nad mezerou
-                    ctx.fillStyle = 'rgba(255,0,60,0.55)';
-                    ctx.fillRect(b.x + 2, b.y, b.w - 4, gapCenter - gapHalf - b.y);
-                    ctx.fillRect(b.x + 2, gapCenter + gapHalf, b.w - 4, b.y + b.h - (gapCenter + gapHalf));
-                    // Bezpečná mezera
-                    ctx.fillStyle = 'rgba(0,255,100,0.08)';
-                    ctx.fillRect(b.x, gapCenter - gapHalf, b.w, gapHalf * 2);
-                    ctx.setLineDash([4, 4]); ctx.strokeStyle = 'rgba(0,255,100,0.3)'; ctx.lineWidth = 1;
-                    ctx.strokeRect(b.x, gapCenter - gapHalf, b.w, gapHalf * 2);
-                    ctx.setLineDash([]);
-                } else {
-                    ctx.fillStyle = 'rgba(255,0,60,0.55)';
-                    ctx.fillRect(b.x + 2, b.y, b.w - 4, b.h);
-                }
-            }
-            // Pattern label
-            if(b.pattern) {
-                ctx.fillStyle = active ? 'rgba(255,0,60,0.8)' : 'rgba(100,0,20,0.5)';
-                ctx.font = '10px monospace'; ctx.textAlign = 'center';
-                ctx.fillText(b.pattern.toUpperCase(), b.x + b.w/2, b.y - 4);
-            }
-            // Safe cooldown indicator
-            if(b.dmgCooldown > 0) {
-                ctx.strokeStyle = 'rgba(0,255,100,0.6)'; ctx.lineWidth = 2;
-                ctx.setLineDash([4, 4]); ctx.strokeRect(b.x - 4, b.y - 4, b.w + 8, b.h + 8); ctx.setLineDash([]);
-            }
-            ctx.shadowBlur = 0; ctx.restore();
-            return;
-        }
-        // Space kovový panel
-        ctx.save();
-        ctx.fillStyle = b.isBack ? '#0a0818' : '#0d0a1a';
+    if(b.type === 'metal_pillar') {
+        const pulse = Math.sin(plane.frame * 0.04 + b.glowOffset);
+        // Kovový pilíř
+        ctx.fillStyle = b.isBack ? '#1a0a12' : '#2a1020';
         ctx.fillRect(b.x, b.y, b.w, b.h);
-        ctx.strokeStyle = b.isBack ? 'rgba(100,80,160,0.2)' : 'rgba(150,120,220,0.35)';
-        ctx.lineWidth = 1; ctx.strokeRect(b.x, b.y, b.w, b.h);
-        // Okna
-        if(!b.isBack) {
-            for(let i = 0; i < 3; i++) {
-                for(let j = 0; j < 2; j++) {
-                    const wx = b.x + 8 + i * 18, wy = b.y + 12 + j * 20;
-                    ctx.fillStyle = Math.random() > 0.995 ? '#ffffff' : 'rgba(100,180,255,0.3)';
-                    ctx.fillRect(wx, wy, 10, 8);
-                }
-            }
+        // Červené neonové pruhy
+        ctx.shadowBlur = 8; ctx.shadowColor = '#ff003c';
+        ctx.fillStyle = `rgba(255,0,60,${0.4 + pulse * 0.3})`;
+        for(let i = 0; i < 4; i++) {
+            const gy = b.fromTop ? b.y + b.h * (0.1 + i*0.25) : b.y + b.h * (0.1 + i*0.25);
+            ctx.fillRect(b.x - 3, gy, b.w + 6, 4);
         }
-        ctx.restore();
-        return;
+        // Výstražná světla
+        ctx.fillStyle = `rgba(255,${pulse > 0 ? 0 : 100},60,${0.6 + Math.abs(pulse)*0.4})`;
+        ctx.beginPath(); ctx.arc(b.x + b.w/2, b.fromTop ? b.y + b.h : b.y, 8, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
+    }
+    if(b.type === 'laser_gate') {
+        // Laserová brána - SMRTÍCÍ překážka
+        b.laserTimer = (b.laserTimer || 0) + 0.8;
+        const active = b.laserActive !== undefined ? b.laserActive : Math.sin(b.laserTimer * 0.05) > 0;
+        // Rám brány
+        ctx.fillStyle = '#1a0510';
+        ctx.fillRect(b.x, b.y, b.w, b.h);
+        ctx.strokeStyle = '#ff003c'; ctx.lineWidth = 2;
+        ctx.strokeRect(b.x, b.y, b.w, b.h);
+
+        if(b.pattern === 'sweep' || b.pattern === 'pulse') {
+            // Sweep/pulse — laser s mezerou
+            const gapCenter = b.y + (b.h * (b.gapPos || 0.5));
+            const gapHalf = (b.gapSize || 90) / 2;
+            const gapY1 = Math.max(b.y, gapCenter - gapHalf);
+            const gapY2 = Math.min(b.y + b.h, gapCenter + gapHalf);
+            ctx.shadowBlur = 20; ctx.shadowColor = '#ff003c';
+            // Horní část laseru
+            if(gapY1 > b.y) {
+                ctx.fillStyle = 'rgba(255,0,60,0.9)';
+                ctx.fillRect(b.x + b.w/2 - 3, b.y, 6, gapY1 - b.y);
+                ctx.fillStyle = 'rgba(255,100,100,0.4)';
+                ctx.fillRect(b.x + b.w/2 - 8, b.y, 16, gapY1 - b.y);
+            }
+            // Spodní část laseru
+            if(gapY2 < b.y + b.h) {
+                ctx.fillStyle = 'rgba(255,0,60,0.9)';
+                ctx.fillRect(b.x + b.w/2 - 3, gapY2, 6, b.y + b.h - gapY2);
+                ctx.fillStyle = 'rgba(255,100,100,0.4)';
+                ctx.fillRect(b.x + b.w/2 - 8, gapY2, 16, b.y + b.h - gapY2);
+            }
+            // Mezera - zelený průchod
+            ctx.fillStyle = 'rgba(0,255,100,0.08)';
+            ctx.fillRect(b.x, gapY1, b.w, gapY2 - gapY1);
+            // Indikátor mezery (tenká zelená čára)
+            ctx.strokeStyle = 'rgba(0,255,100,0.3)'; ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+            ctx.strokeRect(b.x + 2, gapY1, b.w - 4, gapY2 - gapY1);
+            ctx.setLineDash([]);
+            ctx.shadowBlur = 0;
+        } else if(active) {
+            // Blink — celý laser
+            ctx.shadowBlur = 20; ctx.shadowColor = '#ff003c';
+            ctx.fillStyle = `rgba(255,0,60,0.9)`;
+            ctx.fillRect(b.x + b.w/2 - 3, b.y, 6, b.h);
+            ctx.fillStyle = 'rgba(255,100,100,0.5)';
+            ctx.fillRect(b.x + b.w/2 - 8, b.y, 16, b.h);
+            ctx.shadowBlur = 0;
+        } else {
+            // Vypnutý laser - jen slabý záblesk
+            ctx.fillStyle = 'rgba(255,0,60,0.15)';
+            ctx.fillRect(b.x + b.w/2 - 2, b.y, 4, b.h);
+        }
+
+        // Pattern label (malý)
+        if(b.pattern && b.pattern !== 'blink' && b.pattern !== 'none') {
+            ctx.fillStyle = 'rgba(255,100,100,0.6)';
+            ctx.font = '9px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(b.pattern.toUpperCase(), b.x + b.w/2, b.y - 4);
+        }
+
+        // Safe indikátor (zelený border když cooldown aktivní)
+        if(b.dmgCooldown > 0) {
+            ctx.strokeStyle = 'rgba(0,255,100,0.6)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.strokeRect(b.x - 4, b.y - 4, b.w + 8, b.h + 8);
+            ctx.setLineDash([]);
+        }
+    }
     }
     if(currentLevel === 6) {
         // 🌊 ABYSSAL DEEP - Bioluminescent Corals!
@@ -8445,27 +8526,405 @@ function render() {
     // === L7 SPACE BACKGROUND ===
     if(currentLevel === 7) {
         const f = plane.frame;
-        // Mlhoviny
+
+        // === ČISTÁ TEMNOTA VESMÍRU ===
+        ctx.fillStyle = '#00000e';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // === HVĚZDNÉ POLE — 5 VRSTEV ===
         ctx.save();
-        let nA = ctx.createRadialGradient(canvas.width*.65,canvas.height*.4,0,canvas.width*.65,canvas.height*.4,300); nA.addColorStop(0,'rgba(30,80,200,0.16)'); nA.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=nA; ctx.fillRect(0,0,canvas.width,canvas.height);
-        let nB = ctx.createRadialGradient(canvas.width*.2,canvas.height*.25,0,canvas.width*.2,canvas.height*.25,220); nB.addColorStop(0,'rgba(140,40,220,0.13)'); nB.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=nB; ctx.fillRect(0,0,canvas.width,canvas.height);
-        let nC = ctx.createRadialGradient(canvas.width*.15,canvas.height*.72,0,canvas.width*.15,canvas.height*.72,180); nC.addColorStop(0,'rgba(220,60,20,0.11)'); nC.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=nC; ctx.fillRect(0,0,canvas.width,canvas.height);
+        // Vrstva 0: mikro-prach (statický)
+        for(let i = 0; i < 300; i++) {
+            const sx = (i * 71 + 3) % canvas.width;
+            const sy = (i * 53 + 11) % canvas.height;
+            ctx.globalAlpha = 0.10 + (i%4)*0.04;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(sx, sy, 0.7, 0.7);
+        }
+        // Vrstva 1: vzdálené hvězdy
+        for(let i = 0; i < 160; i++) {
+            const sx = ((i*127 + l7ScrollX*.1) % canvas.width + canvas.width) % canvas.width;
+            const sy = (i*89 + 23) % canvas.height;
+            ctx.globalAlpha = 0.18 + Math.sin(f*.025+i*.9)*.10;
+            ctx.fillStyle = i%9===0?'#bbddff':i%7===0?'#ffddcc':'#ffffff';
+            ctx.beginPath(); ctx.arc(sx, sy, 0.6, 0, Math.PI*2); ctx.fill();
+        }
+        // Vrstva 2: střední hvězdy
+        for(let i = 0; i < 80; i++) {
+            const sx = ((i*191 + l7ScrollX*.25) % canvas.width + canvas.width) % canvas.width;
+            const sy = (i*113 + 41) % canvas.height;
+            ctx.globalAlpha = 0.30 + Math.sin(f*.04+i*1.2)*.20;
+            ctx.fillStyle = i%5===0?'#99ccff':i%7===0?'#ffbbee':'#ffffff';
+            ctx.beginPath(); ctx.arc(sx, sy, 1.0, 0, Math.PI*2); ctx.fill();
+        }
+        // Vrstva 3: barevné hvězdy
+        const sCols = ['#ffe8c0','#c8e0ff','#ffc8c8','#c8ffee','#ffffff','#fff0aa'];
+        for(let i = 0; i < 30; i++) {
+            const sx = ((i*307 + l7ScrollX*.45) % canvas.width + canvas.width) % canvas.width;
+            const sy = (i*173 + 67) % canvas.height;
+            ctx.globalAlpha = 0.50 + Math.sin(f*.035+i*1.7)*.30;
+            const col = sCols[i%sCols.length];
+            ctx.fillStyle = col;
+            ctx.shadowBlur = 4; ctx.shadowColor = col;
+            ctx.beginPath(); ctx.arc(sx, sy, 1.4, 0, Math.PI*2); ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+        // Vrstva 4: superjasné hvězdy s paprsky
+        for(let i = 0; i < 6; i++) {
+            const sx = ((i*461 + l7ScrollX*.65) % canvas.width + canvas.width) % canvas.width;
+            const sy = (i*239 + 91) % canvas.height;
+            const spulse = 0.6 + Math.sin(f*.03+i*2.3)*.35;
+            ctx.globalAlpha = spulse;
+            const col = i%3===0?'#aaddff':i%3===1?'#ffeecc':'#eeeeff';
+            ctx.fillStyle = col;
+            ctx.shadowBlur = 10; ctx.shadowColor = col;
+            ctx.beginPath(); ctx.arc(sx, sy, 2.0, 0, Math.PI*2); ctx.fill();
+            const sl = 10 + spulse*4;
+            ctx.strokeStyle = col; ctx.lineWidth = 0.5;
+            ctx.beginPath(); ctx.moveTo(sx-sl,sy); ctx.lineTo(sx+sl,sy); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(sx,sy-sl); ctx.lineTo(sx,sy+sl); ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+        ctx.globalAlpha = 1;
         ctx.restore();
-        // Hvězdy
-        for(let i=0;i<180;i++){const sx=((i*127+l7ScrollX*.1)%canvas.width+canvas.width)%canvas.width,sy=(i*89+23)%canvas.height;ctx.globalAlpha=0.2+Math.sin(f*.025+i*.9)*.12;ctx.fillStyle=i%9===0?'#bbddff':i%7===0?'#ffddcc':'#ffffff';ctx.beginPath();ctx.arc(sx,sy,0.6,0,Math.PI*2);ctx.fill();}
-        for(let i=0;i<35;i++){const sx=((i*307+l7ScrollX*.45)%canvas.width+canvas.width)%canvas.width,sy=(i*173+67)%canvas.height;ctx.globalAlpha=0.55+Math.sin(f*.035+i*1.7)*.35;ctx.fillStyle=['#ffe8c0','#c8e0ff','#ffffff'][i%3];ctx.shadowBlur=4;ctx.shadowColor=ctx.fillStyle;ctx.beginPath();ctx.arc(sx,sy,1.5,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;}
-        ctx.globalAlpha=1;
-        // Planeta
-        ctx.save();const plX=canvas.width*.87,plY=canvas.height*.8,plR=80;
-        let surf=ctx.createRadialGradient(plX-plR*.3,plY-plR*.3,0,plX,plY,plR);surf.addColorStop(0,'#1a3a88');surf.addColorStop(1,'#04081a');ctx.fillStyle=surf;ctx.beginPath();ctx.arc(plX,plY,plR,0,Math.PI*2);ctx.fill();
-        ctx.strokeStyle='rgba(50,120,255,0.25)';ctx.lineWidth=3;ctx.beginPath();ctx.arc(plX,plY,plR+2,0,Math.PI*2);ctx.stroke();ctx.restore();
-        // Asteroidy
-        for(let i=0;i<5;i++){const ax=((i*353+l7ScrollX*.85)%(canvas.width+220)+canvas.width+220)%(canvas.width+220)-110,ay=(i*197+83)%(canvas.height-100)+50,ar=10+(i%4)*6;ctx.save();ctx.translate(ax,ay);ctx.rotate(f*.005+i);ctx.globalAlpha=0.7;ctx.fillStyle='#252035';ctx.beginPath();ctx.moveTo(ar,0);ctx.lineTo(ar*.7,-ar*.85);ctx.lineTo(-ar*.2,-ar);ctx.lineTo(-ar,-ar*.5);ctx.lineTo(-ar*.9,ar*.4);ctx.lineTo(ar*.1,ar);ctx.closePath();ctx.fill();ctx.restore();}
-        ctx.globalAlpha=1;
-        // Strop/Podlaha červená linka
-        ctx.strokeStyle=`rgba(255,0,60,${0.3+Math.sin(f*0.04)*0.2})`;ctx.lineWidth=2;
-        ctx.beginPath();ctx.moveTo(0,35);ctx.lineTo(canvas.width,35);ctx.stroke();
-        ctx.beginPath();ctx.moveTo(0,canvas.height-35);ctx.lineTo(canvas.width,canvas.height-35);ctx.stroke();
+
+        // === VZDÁLENÉ PLANETY ===
+        ctx.save();
+
+        // --- ZEMĚ (modrá, vlevo nahoře) ---
+        {
+            const ex = ((l7ScrollX * 0.04) % (canvas.width + 300) - 150 + canvas.width + 300) % (canvas.width + 300) - 150;
+            const ey = canvas.height * 0.18;
+            const er = 52;
+            ctx.save();
+            ctx.translate(ex, ey);
+            // Záře
+            let earthGlow = ctx.createRadialGradient(0, 0, er*0.8, 0, 0, er*2.2);
+            earthGlow.addColorStop(0, 'rgba(40,100,255,0.08)');
+            earthGlow.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = earthGlow;
+            ctx.beginPath(); ctx.arc(0, 0, er*2.2, 0, Math.PI*2); ctx.fill();
+            // Těleso
+            let earthGrad = ctx.createRadialGradient(-er*0.3, -er*0.3, 0, 0, 0, er);
+            earthGrad.addColorStop(0, '#3a7fff');
+            earthGrad.addColorStop(0.4, '#1a55cc');
+            earthGrad.addColorStop(0.8, '#0a2288');
+            earthGrad.addColorStop(1, '#040e3a');
+            ctx.globalAlpha = 0.82;
+            ctx.fillStyle = earthGrad;
+            ctx.beginPath(); ctx.arc(0, 0, er, 0, Math.PI*2); ctx.fill();
+            // Kontinenty (zelené fleky)
+            ctx.globalAlpha = 0.55;
+            ctx.fillStyle = '#2a8a44';
+            [[-12,-18,14,10],[10,-8,18,12],[-22,8,10,8],[8,14,12,9]].forEach(([cx2,cy2,rw,rh]) => {
+                ctx.beginPath(); ctx.ellipse(cx2, cy2, rw, rh, 0.4, 0, Math.PI*2); ctx.fill();
+            });
+            // Oblaka (bílé)
+            ctx.globalAlpha = 0.22;
+            ctx.fillStyle = '#ffffff';
+            [[-18,-22,20,6],[12,-14,16,5],[-8,10,22,5]].forEach(([cx2,cy2,rw,rh]) => {
+                ctx.beginPath(); ctx.ellipse(cx2, cy2, rw, rh, 0.2, 0, Math.PI*2); ctx.fill();
+            });
+            // Atmosférický okraj
+            ctx.globalAlpha = 0.18;
+            let atmo = ctx.createRadialGradient(0,0,er*0.85, 0,0,er*1.12);
+            atmo.addColorStop(0, 'rgba(100,180,255,0)');
+            atmo.addColorStop(0.6, 'rgba(100,180,255,0.5)');
+            atmo.addColorStop(1, 'rgba(100,180,255,0)');
+            ctx.fillStyle = atmo;
+            ctx.beginPath(); ctx.arc(0, 0, er*1.12, 0, Math.PI*2); ctx.fill();
+            // Temnota (stínová polovina)
+            ctx.globalAlpha = 0.45;
+            let shadow = ctx.createLinearGradient(er*0.2, 0, er, 0);
+            shadow.addColorStop(0, 'rgba(0,0,0,0)');
+            shadow.addColorStop(1, 'rgba(0,0,15,0.85)');
+            ctx.fillStyle = shadow;
+            ctx.beginPath(); ctx.arc(0, 0, er, 0, Math.PI*2); ctx.fill();
+            ctx.restore();
+        }
+
+        // --- MARS (červenooranžový, vpravo uprostřed) ---
+        {
+            const mx = ((l7ScrollX * 0.055 + canvas.width*0.62) % (canvas.width + 200) + canvas.width + 200) % (canvas.width + 200) - 100;
+            const my = canvas.height * 0.30;
+            const mr = 32;
+            ctx.save();
+            ctx.translate(mx, my);
+            // Záře
+            let marsGlow = ctx.createRadialGradient(0,0,mr*0.8,0,0,mr*2.0);
+            marsGlow.addColorStop(0, 'rgba(200,70,30,0.10)');
+            marsGlow.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = marsGlow;
+            ctx.beginPath(); ctx.arc(0, 0, mr*2.0, 0, Math.PI*2); ctx.fill();
+            // Těleso
+            let marsGrad = ctx.createRadialGradient(-mr*0.25,-mr*0.25,0,0,0,mr);
+            marsGrad.addColorStop(0, '#e8622a');
+            marsGrad.addColorStop(0.5, '#c04418');
+            marsGrad.addColorStop(0.85, '#8a2a08');
+            marsGrad.addColorStop(1, '#3a0f02');
+            ctx.globalAlpha = 0.88;
+            ctx.fillStyle = marsGrad;
+            ctx.beginPath(); ctx.arc(0, 0, mr, 0, Math.PI*2); ctx.fill();
+            // Povrchové detaily (tmavší oblasti)
+            ctx.globalAlpha = 0.30;
+            ctx.fillStyle = '#6a1e06';
+            [[-8,-12,10,7],[5,4,14,8],[-14,5,8,5]].forEach(([cx2,cy2,rw,rh]) => {
+                ctx.beginPath(); ctx.ellipse(cx2, cy2, rw, rh, 0.3, 0, Math.PI*2); ctx.fill();
+            });
+            // Polární čepička (bílá)
+            ctx.globalAlpha = 0.55;
+            ctx.fillStyle = '#ffddcc';
+            ctx.beginPath(); ctx.ellipse(0, -mr*0.78, mr*0.28, mr*0.12, 0, 0, Math.PI*2); ctx.fill();
+            // Stín
+            ctx.globalAlpha = 0.40;
+            let mShadow = ctx.createLinearGradient(mr*0.15,0,mr,0);
+            mShadow.addColorStop(0,'rgba(0,0,0,0)');
+            mShadow.addColorStop(1,'rgba(0,0,0,0.80)');
+            ctx.fillStyle = mShadow;
+            ctx.beginPath(); ctx.arc(0, 0, mr, 0, Math.PI*2); ctx.fill();
+            ctx.restore();
+        }
+
+        // --- FIKTIVNÍ PLANETA (fialová, dole vlevo) ---
+        {
+            const px = ((l7ScrollX * 0.03 + canvas.width*0.15) % (canvas.width + 250) + canvas.width + 250) % (canvas.width + 250) - 125;
+            const py = canvas.height * 0.72;
+            const pr = 40;
+            ctx.save();
+            ctx.translate(px, py);
+            // Záře
+            let pGlow = ctx.createRadialGradient(0,0,pr*0.8,0,0,pr*2.0);
+            pGlow.addColorStop(0,'rgba(160,60,255,0.10)');
+            pGlow.addColorStop(1,'rgba(0,0,0,0)');
+            ctx.fillStyle = pGlow;
+            ctx.beginPath(); ctx.arc(0,0,pr*2.0,0,Math.PI*2); ctx.fill();
+            // Těleso
+            let pGrad = ctx.createRadialGradient(-pr*0.3,-pr*0.3,0,0,0,pr);
+            pGrad.addColorStop(0,'#cc66ff');
+            pGrad.addColorStop(0.5,'#8822cc');
+            pGrad.addColorStop(0.85,'#440a88');
+            pGrad.addColorStop(1,'#15003a');
+            ctx.globalAlpha = 0.80;
+            ctx.fillStyle = pGrad;
+            ctx.beginPath(); ctx.arc(0,0,pr,0,Math.PI*2); ctx.fill();
+            // Prstence (nakloněná elipsa)
+            ctx.globalAlpha = 0.35;
+            ctx.strokeStyle = '#cc88ff';
+            ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.ellipse(0, 0, pr*1.75, pr*0.38, -0.25, 0, Math.PI*2); ctx.stroke();
+            ctx.lineWidth = 1.2;
+            ctx.globalAlpha = 0.18;
+            ctx.beginPath(); ctx.ellipse(0, 0, pr*2.05, pr*0.45, -0.25, 0, Math.PI*2); ctx.stroke();
+            // Stín
+            ctx.globalAlpha = 0.45;
+            let pShadow = ctx.createLinearGradient(pr*0.2,0,pr,0);
+            pShadow.addColorStop(0,'rgba(0,0,0,0)');
+            pShadow.addColorStop(1,'rgba(0,0,20,0.85)');
+            ctx.fillStyle = pShadow;
+            ctx.beginPath(); ctx.arc(0,0,pr,0,Math.PI*2); ctx.fill();
+            ctx.restore();
+        }
+
+        ctx.globalAlpha = 1;
+        ctx.restore();
+
+        // === VZDÁLENÁ UFO MATEŘSKÁ LOĎ ===
+        {
+            const uf = plane.frame;
+            // Pomalý parallax — loď je daleko
+            const ux = ((l7ScrollX * 0.08 + canvas.width * 0.55) % (canvas.width + 400) + canvas.width + 400) % (canvas.width + 400) - 200;
+            const uy = canvas.height * 0.13;
+            const uscale = 0.28; // malá — je daleko
+
+            ctx.save();
+            ctx.translate(ux, uy);
+            ctx.scale(uscale, uscale);
+
+            const upulse = 0.7 + 0.3 * Math.sin(uf * 0.018);
+            ctx.globalAlpha = 0.55 + 0.12 * Math.sin(uf * 0.022);
+
+            // Záře kolem lodě
+            let uGlow = ctx.createRadialGradient(0, 0, 80, 0, 80, 320);
+            uGlow.addColorStop(0, `rgba(0,200,255,${0.12 * upulse})`);
+            uGlow.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = uGlow;
+            ctx.beginPath(); ctx.arc(0, 80, 320, 0, Math.PI*2); ctx.fill();
+
+            // Pohonný paprsek (zespoda, fialový)
+            ctx.globalAlpha = (0.12 + 0.08 * Math.sin(uf*0.04)) * 0.55;
+            let beamG = ctx.createLinearGradient(0, 60, 0, 260);
+            beamG.addColorStop(0, 'rgba(180,60,255,0.8)');
+            beamG.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = beamG;
+            ctx.beginPath();
+            ctx.moveTo(-80, 60); ctx.lineTo(-20, 260); ctx.lineTo(20, 260); ctx.lineTo(80, 60);
+            ctx.closePath(); ctx.fill();
+
+            // Hlavní disk
+            ctx.globalAlpha = 0.55 + 0.12 * Math.sin(uf * 0.022);
+            let dGrad = ctx.createLinearGradient(0, -20, 0, 40);
+            dGrad.addColorStop(0, '#1a2a3a');
+            dGrad.addColorStop(0.5, '#0d1820');
+            dGrad.addColorStop(1, '#050d10');
+            ctx.shadowBlur = 20; ctx.shadowColor = '#00ccff';
+            ctx.fillStyle = dGrad;
+            ctx.beginPath(); ctx.ellipse(0, 20, 260, 50, 0, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = `rgba(0,220,255,${0.4 * upulse})`;
+            ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.ellipse(0, 20, 260, 50, 0, 0, Math.PI*2); ctx.stroke();
+
+            // Kupole (nahoře)
+            let domeG = ctx.createRadialGradient(-40, -40, 0, 0, 0, 120);
+            domeG.addColorStop(0, 'rgba(100,220,255,0.20)');
+            domeG.addColorStop(0.6, 'rgba(20,80,100,0.45)');
+            domeG.addColorStop(1, 'rgba(0,20,30,0.85)');
+            ctx.fillStyle = domeG;
+            ctx.beginPath(); ctx.ellipse(0, -10, 120, 90, 0, Math.PI, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = 'rgba(0,200,230,0.30)';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.ellipse(0, -10, 120, 90, 0, Math.PI, Math.PI*2); ctx.stroke();
+
+            // Rotující světla na disku (6 bodů)
+            for(let i = 0; i < 6; i++) {
+                const lAng = uf * 0.012 + i * (Math.PI*2/6);
+                const lx = Math.cos(lAng) * 220;
+                const ly = 20 + Math.sin(lAng) * 22;
+                const lA = 0.4 + 0.5 * Math.sin(uf * 0.025 + i * 1.1);
+                const lC = i%2===0 ? `rgba(0,255,220,${lA})` : `rgba(120,200,255,${lA})`;
+                ctx.shadowBlur = 10; ctx.shadowColor = '#00ffcc';
+                ctx.fillStyle = lC;
+                ctx.beginPath(); ctx.arc(lx, ly, 5, 0, Math.PI*2); ctx.fill();
+            }
+
+            // Světelný paprsek dolů (skenovací)
+            const scanAngle = Math.sin(uf * 0.008) * 0.3;
+            ctx.globalAlpha = 0.06 + 0.04 * Math.sin(uf * 0.03);
+            let scanG = ctx.createLinearGradient(0, 30, Math.sin(scanAngle)*300, 400);
+            scanG.addColorStop(0, 'rgba(0,255,200,0.8)');
+            scanG.addColorStop(1, 'rgba(0,255,200,0)');
+            ctx.fillStyle = scanG;
+            ctx.beginPath();
+            ctx.moveTo(-15, 30); ctx.lineTo(Math.sin(scanAngle)*300 - 60, 400);
+            ctx.lineTo(Math.sin(scanAngle)*300 + 60, 400); ctx.lineTo(15, 30);
+            ctx.closePath(); ctx.fill();
+
+            ctx.shadowBlur = 0;
+            ctx.globalAlpha = 1;
+            ctx.restore();
+        }
+
+        // === ASTEROIDY — malé pozadí ===
+        for(let i = 0; i < 6; i++) {
+            const ax = ((i*277+l7ScrollX*.3)%(canvas.width+120)+canvas.width+120)%(canvas.width+120)-60;
+            const ay = (i*149+55)%(canvas.height-80)+40;
+            const ar = 3+(i%3)*2;
+            ctx.save();
+            ctx.translate(ax, ay);
+            ctx.rotate(f*.003*((i%2)?1:-1)+i);
+            ctx.globalAlpha = 0.18+(i%3)*.08;
+            ctx.fillStyle = '#2a2035';
+            ctx.beginPath();
+            ctx.moveTo(ar,0); ctx.lineTo(ar*.5,-ar*.9); ctx.lineTo(-ar*.4,-ar*.7);
+            ctx.lineTo(-ar,-ar*.3); ctx.lineTo(-ar*.7,ar*.6); ctx.lineTo(ar*.3,ar*.8);
+            ctx.closePath(); ctx.fill();
+            ctx.restore();
+        }
+
+        // === ASTEROIDY — VELKÉ s krátery ===
+        for(let i = 0; i < l7Asteroids.length; i++) {
+            const a = l7Asteroids[i];
+            ctx.save();
+            ctx.translate(a.x, a.y);
+            ctx.rotate(a.angle);
+            ctx.globalAlpha = 0.88;
+            const pts = 7;
+            ctx.fillStyle = `hsl(${25+(a.seed%20)}, 18%, ${22+(a.seed%12)}%)`;
+            ctx.beginPath();
+            for(let p = 0; p < pts; p++) {
+                const ang = (p/pts)*Math.PI*2;
+                const jitter = 0.72 + 0.28*Math.sin(a.seed*1.3+p*2.7);
+                p===0 ? ctx.moveTo(Math.cos(ang)*a.r*jitter, Math.sin(ang)*a.r*jitter)
+                      : ctx.lineTo(Math.cos(ang)*a.r*jitter, Math.sin(ang)*a.r*jitter);
+            }
+            ctx.closePath(); ctx.fill();
+            ctx.strokeStyle = 'rgba(180,165,150,0.22)'; ctx.lineWidth = 1.2; ctx.stroke();
+            ctx.fillStyle = 'rgba(200,185,165,0.10)';
+            ctx.beginPath();
+            for(let p = 0; p < pts; p++) {
+                const ang = (p/pts)*Math.PI*2-0.8;
+                const jitter = 0.55+0.2*Math.sin(a.seed*1.3+p*2.7);
+                p===0 ? ctx.moveTo(Math.cos(ang)*a.r*jitter*0.65, Math.sin(ang)*a.r*jitter*0.65)
+                      : ctx.lineTo(Math.cos(ang)*a.r*jitter*0.65, Math.sin(ang)*a.r*jitter*0.65);
+            }
+            ctx.closePath(); ctx.fill();
+            for(let c = 0; c < a.craterCount; c++) {
+                const ccx = Math.cos(a.seed*0.5+c*2.1)*a.r*0.45;
+                const ccy = Math.sin(a.seed*0.7+c*1.8)*a.r*0.4;
+                const cr = a.r*(0.12+(c%3)*0.07);
+                ctx.strokeStyle = 'rgba(0,0,0,0.30)'; ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.arc(ccx,ccy,cr,0,Math.PI*2); ctx.stroke();
+                ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fill();
+            }
+            ctx.restore();
+        }
+        ctx.globalAlpha = 1;
+
+        // === PORTÁL (vpravo — fialový vortex) ===
+        {
+            const ppx = l7Portal.x, ppy = l7Portal.y;
+            const ppulse = 0.85 + 0.15*Math.sin(l7Portal.pulsePhase);
+            const ppr = 55*ppulse;
+            ctx.save();
+            let pglow = ctx.createRadialGradient(ppx,ppy,0,ppx,ppy,ppr*2.2);
+            pglow.addColorStop(0,  'rgba(160,50,255,0.16)');
+            pglow.addColorStop(0.5,'rgba(80,10,180,0.07)');
+            pglow.addColorStop(1,  'rgba(0,0,0,0)');
+            ctx.fillStyle = pglow;
+            ctx.beginPath(); ctx.arc(ppx,ppy,ppr*2.2,0,Math.PI*2); ctx.fill();
+            for(let r = 0; r < 3; r++) {
+                const ringR = ppr*(0.7+r*0.18);
+                ctx.strokeStyle = `rgba(${170-r*40},${60+r*20},255,${0.45-r*0.10})`;
+                ctx.lineWidth = 2-r*0.5;
+                ctx.beginPath();
+                ctx.arc(ppx,ppy,ringR,
+                    l7Portal.angle*(r%2===0?1:-1)+r,
+                    l7Portal.angle*(r%2===0?1:-1)+r+Math.PI*1.6);
+                ctx.stroke();
+            }
+            let pcore = ctx.createRadialGradient(ppx,ppy,0,ppx,ppy,ppr*0.55);
+            pcore.addColorStop(0,  'rgba(0,0,0,1)');
+            pcore.addColorStop(0.6,'rgba(20,0,40,0.9)');
+            pcore.addColorStop(1,  'rgba(80,0,150,0.3)');
+            ctx.fillStyle = pcore;
+            ctx.beginPath(); ctx.arc(ppx,ppy,ppr*0.55,0,Math.PI*2); ctx.fill();
+            for(let d = 0; d < 6; d++) {
+                const dAng = l7Portal.angle*2+d*(Math.PI*2/6);
+                const dR = ppr*0.42;
+                ctx.globalAlpha = 0.65+0.3*Math.sin(l7Portal.pulsePhase+d);
+                ctx.fillStyle = d%2===0 ? '#cc44ff' : '#7722dd';
+                ctx.beginPath(); ctx.arc(ppx+Math.cos(dAng)*dR, ppy+Math.sin(dAng)*dR, 3, 0, Math.PI*2); ctx.fill();
+            }
+            ctx.globalAlpha = 0.45+0.2*Math.sin(l7Portal.pulsePhase);
+            ctx.fillStyle = '#cc88ff';
+            ctx.font = 'bold 9px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('PORTAL', ppx, ppy+ppr+14);
+            ctx.restore();
+            ctx.globalAlpha = 1;
+        }
+    }
+    if(currentLevel === 7) {
+        // Strop
+        const cg = ctx.createLinearGradient(0, 0, 0, 35);
+        cg.addColorStop(0, '#1a0010'); cg.addColorStop(1, 'transparent');
+        ctx.fillStyle = cg; ctx.fillRect(0, 0, canvas.width, 35);
+        ctx.strokeStyle = `rgba(255,0,60,${0.3+Math.sin(plane.frame*0.04)*0.2})`; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(0, 35); ctx.lineTo(canvas.width, 35); ctx.stroke();
+        // Podlaha
+        const fg = ctx.createLinearGradient(0, canvas.height-35, 0, canvas.height);
+        fg.addColorStop(0, 'transparent'); fg.addColorStop(1, '#1a0010');
+        ctx.fillStyle = fg; ctx.fillRect(0, canvas.height-35, canvas.width, 35);
+        ctx.beginPath(); ctx.moveTo(0, canvas.height-35); ctx.lineTo(canvas.width, canvas.height-35); ctx.stroke();
     }
 
     if(currentLevel===6){
@@ -10000,6 +10459,6 @@ function renderFinalLeaderboard(scores) {
 }
 
 </script>
-<div id="buildTag" style="position:fixed; left:8px; bottom:6px; z-index:400; font-size:10px; color:rgba(255,255,255,0.35); font-family:monospace; pointer-events:none;">build 2026-07-12-K</div>
+<div id="buildTag" style="position:fixed; left:8px; bottom:6px; z-index:400; font-size:10px; color:rgba(255,255,255,0.35); font-family:monospace; pointer-events:none;">build 2026-07-14-M</div>
 </body>
 </html>
