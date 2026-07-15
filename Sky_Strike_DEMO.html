@@ -198,6 +198,12 @@
         border-radius: 8px;
         backdrop-filter: blur(10px);
     }
+    .plane-card.locked-card:hover {
+        border-color: #a78bfa;
+        background: rgba(167, 139, 250, 0.08);
+        transform: none;
+        box-shadow: none;
+    }
     .plane-card:hover {
         border-color: #00fbff;
         background: rgba(0, 251, 255, 0.15);
@@ -957,7 +963,8 @@ const AIRCRAFT_PARAM = (() => {
         const v = new URLSearchParams(window.location.search).get('aircraft');
         if (v === null) return null;
         const n = parseInt(v, 10);
-        return (n >= 0 && n <= 3) ? n : null;
+        // DEMO: only F-47X Phantom (0) is available
+        return (n >= 0 && n <= 3) ? 0 : null;
     } catch { return null; }
 })();
 
@@ -1538,6 +1545,7 @@ function initAircraftSelection() {
     container.innerHTML = '';
     
     AIRCRAFT_TYPES.forEach((aircraft, index) => {
+        const isLocked = index !== 0; // DEMO: only F-47X Phantom playable
         const card = document.createElement('div');
         card.className = 'plane-card';
         card.innerHTML = `
@@ -1549,7 +1557,20 @@ function initAircraftSelection() {
             </div>
             <div class="plane-desc">${aircraft.desc}</div>
             ${aircraft.special ? `<div class="plane-special" style="color:${aircraft.color}; font-size:11px; margin-top:8px; font-weight:700;">${aircraft.special}</div>` : ''}
+            ${isLocked ? `<div style="margin-top:14px; padding:8px; border:1px solid #a78bfa; border-radius:6px; color:#a78bfa; font-size:13px; font-weight:700; letter-spacing:2px;">🔒 FULL VERSION</div>` : ''}
         `;
+        
+        if(isLocked) {
+            card.style.opacity = '0.45';
+            card.style.filter = 'grayscale(0.6)';
+            card.style.cursor = 'not-allowed';
+            card.classList.add('locked-card');
+            card.onclick = function() {
+                playSnd(200, 0.15, 'square', 0.1); // locked buzz
+            };
+            container.appendChild(card);
+            return;
+        }
         
         card.dataset.idx = index;
         card.onclick = function() {
