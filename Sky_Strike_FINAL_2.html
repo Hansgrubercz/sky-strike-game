@@ -377,6 +377,11 @@
 }
 </style>
 
+<div id="boss-progress-container" style="display:none; position:absolute; bottom:18px; left:50%; transform:translateX(-50%); width:320px; z-index:50;">
+  <div id="boss-progress-label" style="text-align:center; color:#00c8ff; font-size:11px; letter-spacing:3px; font-family:Orbitron,sans-serif; margin-bottom:4px;">BOSS: 0%</div>
+  <div style="background:rgba(0,0,0,0.6); border:1px solid rgba(0,200,255,0.3); border-radius:4px; height:8px; overflow:hidden;">
+    <div id="boss-progress-bar" style="height:100%; width:0%; background:#00c8ff; transition:width 0.3s ease, background 0.5s ease; box-shadow:0 0 8px #00c8ff;"></div>
+  </div>
 <div id="gameOver">
   <h1 style="font-weight: 200; margin: 0; font-size: 42px">MISSION FAILED</h1>
   <p id="finalScore" style="color: #c7d5e0; margin: 25px 0; font-size: 20px"></p>
@@ -1533,7 +1538,8 @@ function transitionToLevel6() {
 function transitionToLevel7() {
     buildings=[]; backgroundBuildings=[]; enemies=[];
     bullets=[]; enemyBullets=[]; items=[];
-    bubbles=[];
+    bubbles=[]; mountains=[]; volcanicRocks=[]; iceFloes=[];
+    cars=[]; streetLights=[]; searchlights=[]; toxicBuildings=[]; l6Bubbles=[];
     l7ScrollX = 0; ambientStarted = false;
     currentLevel=7; score=0; bossSpawned=false; lives=3; fuel=100;
     document.getElementById("levelVal").textContent="7";
@@ -1861,6 +1867,38 @@ function update(dt) {
     }
     if(currentLevel === 7) {
         l7ScrollX += 2;
+    }
+    if(currentLevel === 7 && plane.frame % 2 < 1) {
+        const smokeX = plane.x + 5;
+        const smokeY = plane.y + 20;
+        // Hlavní engine dým
+        particles.push({
+            x: smokeX + (Math.random()-0.5)*4,
+            y: smokeY + (Math.random()-0.5)*4,
+            vx: -1.5 - Math.random()*1.5,
+            vy: (Math.random()-0.5)*0.8,
+            life: 0.7 + Math.random()*0.3,
+            maxLife: 1,
+            color: Math.random() > 0.5 ? '#00ccff' : '#aaeeff',
+            size: 3 + Math.random()*3,
+            type: 'smoke'
+        });
+    }
+    if(currentLevel === 7) {
+        const bossEl = document.getElementById("boss-progress-container");
+        if(bossEl) {
+            if(!bossSpawned) {
+                bossEl.style.display = "block";
+                const pct = Math.min(100, (score / 20000) * 100);
+                document.getElementById("boss-progress-bar").style.width = pct + "%";
+                document.getElementById("boss-progress-bar").style.background = 
+                    pct >= 90 ? "#ff003c" : pct >= 60 ? "#ff6600" : "#00c8ff";
+                document.getElementById("boss-progress-label").textContent = 
+                    pct >= 100 ? "⚠ BOSS INCOMING! ⚠" : ("BOSS: " + Math.floor(pct) + "%");
+            } else {
+                bossEl.style.display = "none";
+            }
+        }
     }
     if(currentLevel === 7) {
         // Portál animace
@@ -3006,6 +3044,7 @@ function update(dt) {
     // Boss logic
     if(bossActive && boss) {
         updateBoss(boss, dt);
+        if(bossActive && boss) {
         
         // Boss collision with player
         if(checkCol(plane, boss)) {
@@ -3016,6 +3055,58 @@ function update(dt) {
         for(let i = bullets.length - 1; i >= 0; i--) {
             const b = bullets[i];
             if(checkCol(b, boss)) {
+                if(boss.type === 'mothership') {
+                // Kolize s věžemi Mothership (PRIORITA — před štítem!)
+                if(boss.type === 'mothership' && boss.turrets) {
+                    let hitTurret = false;
+                    for(let t = 0; t < boss.turrets.length; t++) {
+                        const turret = boss.turrets[t];
+                        if(turret.destroyed) continue;
+                        const tx = boss.x - 18, ty = boss.y + turret.offsetY - 10, tw = 28, th = 20;
+                        if(bullets[i].x < tx + tw && bullets[i].x + bullets[i].w > tx &&
+                           bullets[i].y < ty + th && bullets[i].y + bullets[i].h > ty) {
+                            turret.hp -= (bullets[i].dmg || 1);
+                            createExplosion(bullets[i].x, bullets[i].y, '#ff6600', 6);
+                            if(turret.hp <= 0) {
+                                turret.destroyed = true;
+                                shake = 10; playSnd(150, 0.3, 'square', 0.15);
+                                score += 500;
+                                createExplosion(tx + tw/2, ty + th/2, '#ff003c', 20);
+                                // Zkontroluj jestli jsou všechny věže zničeny → štít padne
+                                const allDestroyed = boss.turrets.every(t2 => t2.destroyed);
+                                if(allDestroyed && boss.shieldActive) {
+                                    boss.shieldActive = false;
+                                    boss.shieldHp = 0;
+                                    shake = 25;
+                                    showBossWarning('SHIELD DESTROYED', '#00c8ff');
+                                    playSnd(200, 0.5, 'square', 0.3);
+                                }
+                            }
+                            bullets.splice(i, 1);
+                            hitTurret = true;
+                            break;
+                        }
+                    }
+                    if(hitTurret) continue;
+                }
+                // Mothership štít (až po věžích)
+                if(boss.type === 'mothership' && boss.shieldActive) {
+                    boss.shieldHp -= (bullets[i].dmg || 1);
+                    createExplosion(bullets[i].x, bullets[i].y, '#00c8ff', 5);
+                    if(boss.shieldHp <= 0) { boss.shieldActive = false; shake = 20; playSnd(200, 0.5, 'square', 0.2); }
+                    bullets.splice(i, 1); continue;
+                }
+                if(!boss.invulnerable && !boss.dyingSequence) {
+                    boss.hp -= (bullets[i].dmg || 1) * 2;
+                    boss.hp = Math.max(0, boss.hp);
+                    boss.invulnerable = true; boss.invulnerableTimer = 4;
+                    score += 100;
+                    const expCol = boss.type === 'mothership' ? '#ff003c' : '#88ff00';
+                    createExplosion(bullets[i].x, bullets[i].y, expCol, 8);
+                }
+                bullets.splice(i, 1);
+                    continue;
+                }
                 if(!boss.invulnerable) {
                     const damage = b.dmg || 1; // Use bullet damage (default 1 if not set)
                     boss.hp -= damage;
@@ -3077,6 +3168,7 @@ function update(dt) {
                 bullets.splice(i, 1);
             }
         }
+            }
     }
 
     for(let i = enemies.length-1; i >= 0; i--) {
@@ -3829,16 +3921,29 @@ function createBoss() {
     playSnd(50, 1.5, 'sawtooth', 0.2);
 
     if(currentLevel === 7) {
+        // MOTHERSHIP - Obří mateřská loď
         shake = 15;
         showBossWarning('MOTHERSHIP DETECTED', '#ff003c');
         return {
-            x: canvas.width + 50, y: canvas.height / 2 - 120,
-            w: 320, h: 240, hp: 300, maxHp: 300,
-            phase: 1, shootTimer: 0, moveTimer: 0,
-            targetY: canvas.height / 2 - 120, vertSpeed: 0.8, moveDir: 1,
-            glowPhase: 0, laserCharging: false, laserTimer: 0,
-            laserBeamActive: false, laserBeamTimer: 0, droneSpawnTimer: 0,
-            shieldActive: true, shieldHp: 80, shieldAngle: 0,
+            x: canvas.width + 50,
+            y: canvas.height / 2 - 120,
+            w: 560, h: 260,
+            hp: 150, maxHp: 150,
+            phase: 1,
+            shootTimer: 0,
+            moveTimer: 0,
+            targetY: canvas.height / 2 - 120,
+            vertSpeed: 0.8,
+            moveDir: 1,
+            glowPhase: 0,
+            laserCharging: false,
+            laserTimer: 0,
+            laserBeamActive: false,
+            laserBeamTimer: 0,
+            droneSpawnTimer: 0,
+            shieldActive: true,
+            shieldHp: 80,
+            shieldAngle: 0,
             turrets: [
                 { hp: 15, maxHp: 15, destroyed: false, offsetY: 35 },
                 { hp: 15, maxHp: 15, destroyed: false, offsetY: 75 },
@@ -3847,9 +3952,14 @@ function createBoss() {
                 { hp: 15, maxHp: 15, destroyed: false, offsetY: 205 },
             ],
             gunTimer: [0, 0, 0, 0, 0],
-            empTimer: 0, empActive: false, empDuration: 0,
-            dyingSequence: false, dyingTimer: 0, dyingExplosions: 0,
-            invulnerable: false, invulnerableTimer: 0,
+            empTimer: 0,
+            empActive: false,
+            empDuration: 0,
+            dyingSequence: false,
+            dyingTimer: 0,
+            dyingExplosions: 0,
+            invulnerable: false,
+            invulnerableTimer: 0,
             type: 'mothership'
         };
     }
@@ -3994,32 +4104,260 @@ function drawBoss(b) {
     // === L7: MOTHERSHIP DRAW ===
     if(b.type === 'mothership') {
         const bx = b.x, by = b.y;
-        const glow = 0.5 + Math.sin(b.glowPhase) * 0.3;
+        const f = plane.frame;
+        const hpPct = b.hp / b.maxHp;
+        const isBerserk = hpPct < 0.30;
+        const pulse = 0.7 + Math.sin(b.glowPhase * (isBerserk ? 6 : 3)) * 0.3;
+
+        // Barvy — cyan normálně, červená v berserk
+        const neonMain  = isBerserk ? `rgba(255,${Math.floor(40+pulse*60)},0,${pulse})` : `rgba(0,${Math.floor(180+pulse*75)},255,${pulse})`;
+        const neonGlow  = isBerserk ? '#ff2200' : '#00ccff';
+        const legGlow   = isBerserk ? '#ff4400' : '#cc44ff';
+
+        // Centrum UFO
+        const cx = bx + b.w * 0.35;
+        const cy = by + b.h * 0.42;
+        const diskW = b.w * 0.96;
+        const diskH = b.h * 0.22;
+
         ctx.save();
-        ctx.shadowBlur = 40 * glow; ctx.shadowColor = '#ff003c';
-        ctx.fillStyle = '#0d0008';
+
+        // === BERSERK SPARKY ===
+        if(isBerserk && Math.random() < 0.4) {
+            particles.push({
+                x: cx + (Math.random()-0.5)*diskW,
+                y: cy + (Math.random()-0.5)*diskH*2,
+                vx: (Math.random()-0.5)*7, vy: (Math.random()-0.5)*7,
+                life: 0.7+Math.random()*0.3, maxLife:1,
+                color: Math.random()>0.5 ? '#ffffff' : '#ff8800', size: 3+Math.random()*4, type:'spark'
+            });
+        }
+
+        // === POHONNÝ PAPRSEK (zespoda — fialový/červený) ===
+        const beamH = 90 + Math.sin(f*0.08)*20;
+        const beamAlpha = 0.3 + Math.sin(f*0.1)*0.15;
+        let beamGrad = ctx.createRadialGradient(cx, cy+diskH, 0, cx, cy+diskH, diskW*0.35);
+        beamGrad.addColorStop(0, isBerserk ? `rgba(255,80,0,${beamAlpha+0.3})` : `rgba(220,80,255,${beamAlpha+0.3})`);
+        beamGrad.addColorStop(0.4, isBerserk ? `rgba(255,40,0,${beamAlpha})` : `rgba(160,40,255,${beamAlpha})`);
+        beamGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = beamGrad;
+        // Paprsek — kužel dolů
         ctx.beginPath();
-        ctx.moveTo(bx + b.w, by + b.h/2); ctx.lineTo(bx + b.w*0.7, by + 10);
-        ctx.lineTo(bx + 20, by + 30); ctx.lineTo(bx, by + b.h/2);
-        ctx.lineTo(bx + 20, by + b.h - 30); ctx.lineTo(bx + b.w*0.7, by + b.h - 10);
+        ctx.moveTo(cx - diskW*0.28, cy + diskH);
+        ctx.lineTo(cx - diskW*0.08, cy + diskH + beamH);
+        ctx.lineTo(cx + diskW*0.08, cy + diskH + beamH);
+        ctx.lineTo(cx + diskW*0.28, cy + diskH);
         ctx.closePath(); ctx.fill();
-        ctx.strokeStyle = '#ff003c'; ctx.lineWidth = 2; ctx.stroke();
-        for(let i = 0; i < 4; i++) { const py = by + 40 + i * 45; ctx.fillStyle = 'rgba(180,0,30,0.3)'; ctx.fillRect(bx + 30, py, b.w * 0.5, 30); ctx.strokeStyle = 'rgba(255,0,60,0.5)'; ctx.lineWidth = 1; ctx.strokeRect(bx + 30, py, b.w * 0.5, 30); }
-        for(let i = 0; i < 3; i++) { const mx = bx + b.w - 15, my = by + 50 + i * 55; ctx.fillStyle = '#1a0010'; ctx.beginPath(); ctx.ellipse(mx, my, 18, 22, 0, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = `rgba(255,${50+i*30},0,${0.6+glow*0.4})`; ctx.shadowBlur = 20; ctx.shadowColor = '#ff5500'; ctx.beginPath(); ctx.ellipse(mx, my, 10, 14, 0, 0, Math.PI*2); ctx.fill(); }
+        // Záře paprsku
+        ctx.shadowBlur = 30; ctx.shadowColor = isBerserk ? '#ff4400' : '#cc44ff';
+        ctx.fillStyle = isBerserk ? `rgba(255,80,0,${0.6+pulse*0.3})` : `rgba(200,60,255,${0.6+pulse*0.3})`;
+        ctx.beginPath();
+        ctx.moveTo(cx - diskW*0.12, cy + diskH);
+        ctx.lineTo(cx - diskW*0.04, cy + diskH + beamH*0.7);
+        ctx.lineTo(cx + diskW*0.04, cy + diskH + beamH*0.7);
+        ctx.lineTo(cx + diskW*0.12, cy + diskH);
+        ctx.closePath(); ctx.fill();
         ctx.shadowBlur = 0;
-        ctx.fillStyle = '#0d0005'; ctx.fillRect(bx - 30, by + b.h/2 - 12, 35, 24); ctx.strokeStyle = '#ff003c'; ctx.lineWidth = 2; ctx.strokeRect(bx - 30, by + b.h/2 - 12, 35, 24);
-        if(b.laserCharging) { ctx.shadowBlur = 25; ctx.shadowColor = '#ff003c'; ctx.fillStyle = `rgba(255,0,60,${0.5 + Math.sin(plane.frame*0.3)*0.4})`; ctx.beginPath(); ctx.arc(bx - 30, by + b.h/2, 8 + Math.sin(plane.frame * 0.5) * 6, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0; }
-        if(b.laserBeamActive) { ctx.shadowBlur = 30; ctx.shadowColor = '#ff003c'; ctx.fillStyle = 'rgba(255,0,60,0.9)'; ctx.fillRect(0, by + b.h/2 - 6, bx - 30, 12); ctx.fillStyle = 'rgba(255,150,150,0.4)'; ctx.fillRect(0, by + b.h/2 - 15, bx - 30, 30); ctx.shadowBlur = 0; }
-        if(b.shieldActive) { ctx.save(); ctx.strokeStyle = `rgba(0,200,255,${0.3 + glow * 0.4})`; ctx.lineWidth = 4; ctx.setLineDash([15, 8]); ctx.shadowBlur = 20; ctx.shadowColor = '#00c8ff'; ctx.beginPath(); ctx.ellipse(bx + b.w/2, by + b.h/2, b.w/2 + 25, b.h/2 + 25, 0, 0, Math.PI*2); ctx.stroke(); ctx.setLineDash([]); ctx.restore(); }
-        if(b.turrets) { for(let i = 0; i < b.turrets.length; i++) { const turret = b.turrets[i], tx = bx - 18, ty = by + turret.offsetY - 10; if(turret.destroyed) { ctx.fillStyle = '#331100'; ctx.fillRect(tx, ty, 22, 14); } else { const hpT = turret.hp / turret.maxHp, tColor = hpT > 0.5 ? '#ff003c' : '#ff6600'; ctx.shadowBlur = 10; ctx.shadowColor = tColor; ctx.fillStyle = '#1a0008'; ctx.fillRect(tx, ty, 28, 20); ctx.strokeStyle = tColor; ctx.lineWidth = 1.5; ctx.strokeRect(tx, ty, 28, 20); ctx.fillStyle = tColor; ctx.fillRect(tx - 12, ty + 6, 14, 8); ctx.fillStyle = '#300'; ctx.fillRect(tx, ty - 6, 28, 4); ctx.fillStyle = tColor; ctx.fillRect(tx, ty - 6, 28 * hpT, 4); ctx.shadowBlur = 0; } } }
-        const hpW = b.w;
-        ctx.fillStyle = '#111'; ctx.fillRect(bx, by - 28, hpW, 14);
-        const hpPctM = b.hp / b.maxHp, hpColM = hpPctM > 0.5 ? '#ff003c' : hpPctM > 0.25 ? '#ff6600' : '#ff0000';
-        ctx.fillStyle = hpColM; ctx.shadowBlur = 10; ctx.shadowColor = hpColM; ctx.fillRect(bx, by - 28, hpW * hpPctM, 14);
-        if(b.shieldActive) { ctx.fillStyle = '#001a33'; ctx.fillRect(bx, by - 46, hpW, 10); ctx.fillStyle = '#00c8ff'; ctx.fillRect(bx, by - 46, hpW * (b.shieldHp/80), 10); }
+
+        // === NOHY (4 mechanické, jako na obrázku) ===
+        const legPositions = [-0.38, -0.14, 0.14, 0.38];
+        for(let i = 0; i < 4; i++) {
+            const lx = cx + diskW * legPositions[i];
+            const ly = cy + diskH * 0.8;
+            const legLen = b.h * 0.65 + Math.sin(f*0.04 + i*0.8)*6;
+            const legAngle = (i < 2 ? -0.25 : 0.25) + Math.sin(f*0.04+i)*0.05;
+
+            ctx.strokeStyle = isBerserk ? 'rgba(255,80,0,0.8)' : 'rgba(160,100,255,0.85)';
+            ctx.lineWidth = 7;
+            ctx.shadowBlur = 8; ctx.shadowColor = legGlow;
+
+            // Segment 1 (horní)
+            const midX = lx + Math.sin(legAngle)*legLen*0.5;
+            const midY = ly + legLen*0.45;
+            ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(midX, midY); ctx.stroke();
+
+            // Segment 2 (dolní, ohnutý ven)
+            const endX = midX + Math.sin(legAngle*1.5)*legLen*0.4;
+            const endY = midY + legLen*0.4;
+            ctx.beginPath(); ctx.moveTo(midX, midY); ctx.lineTo(endX, endY); ctx.stroke();
+
+            // Kloub
+            ctx.fillStyle = isBerserk ? '#ff6600' : '#aa66ff';
+            ctx.shadowBlur = 12; ctx.shadowColor = legGlow;
+            ctx.beginPath(); ctx.arc(midX, midY, 8, 0, Math.PI*2); ctx.fill();
+
+            // Spáry (3 prsty)
+            ctx.lineWidth = 2.5;
+            for(let c = -1; c <= 1; c++) {
+                ctx.beginPath();
+                ctx.moveTo(endX, endY);
+                ctx.lineTo(endX + c*12 + Math.sin(legAngle)*8, endY + 12);
+                ctx.stroke();
+            }
+            ctx.shadowBlur = 0;
+        }
+
+        // === SPODNÍ DISK (hlavní trup) ===
+        ctx.shadowBlur = 50 * pulse; ctx.shadowColor = neonGlow;
+        // Vnější trup — tmavý kov
+        ctx.fillStyle = isBerserk ? '#180808' : '#0a0818';
+        ctx.beginPath(); ctx.ellipse(cx, cy, diskW*0.5, diskH*1.1, 0, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = neonMain; ctx.lineWidth = 4; ctx.stroke();
+
+        // Střední prstenec — neonový
+        ctx.strokeStyle = isBerserk ? `rgba(255,80,0,${0.8+pulse*0.2})` : `rgba(0,200,255,${0.8+pulse*0.2})`;
+        ctx.lineWidth = 7;
+        ctx.beginPath(); ctx.ellipse(cx, cy+diskH*0.15, diskW*0.42, diskH*0.45, 0, 0, Math.PI*2); ctx.stroke();
+
+        // Rotující segmenty na disku
+        ctx.save(); ctx.translate(cx, cy+diskH*0.1);
+        for(let s = 0; s < 8; s++) {
+            const sa = s * Math.PI/4 + b.glowPhase * (isBerserk ? 1.5 : 0.8);
+            const sr = diskW * 0.3;
+            ctx.fillStyle = s%2===0 
+                ? (isBerserk ? `rgba(255,60,0,${0.3+pulse*0.3})` : `rgba(0,180,255,${0.25+pulse*0.25})`)
+                : (isBerserk ? 'rgba(100,0,0,0.2)' : 'rgba(80,0,180,0.15)');
+            ctx.beginPath();
+            ctx.moveTo(0,0);
+            ctx.arc(0, 0, sr, sa, sa + Math.PI/4);
+            ctx.closePath(); ctx.fill();
+        }
+        ctx.restore();
+
+        // === HORNÍ KUPOLE ===
+        let domeGrad = ctx.createRadialGradient(cx-diskW*0.08, cy-diskH*0.5, 0, cx, cy-diskH*0.1, diskW*0.28);
+        domeGrad.addColorStop(0, isBerserk ? 'rgba(255,100,50,0.35)' : 'rgba(180,120,255,0.35)');
+        domeGrad.addColorStop(0.5, isBerserk ? 'rgba(80,10,0,0.7)' : 'rgba(20,5,60,0.7)');
+        domeGrad.addColorStop(1, isBerserk ? 'rgba(40,0,0,0.95)' : 'rgba(8,2,30,0.95)');
+        ctx.fillStyle = domeGrad;
+        ctx.beginPath(); ctx.ellipse(cx, cy-diskH*0.1, diskW*0.25, diskH*1.5, 0, Math.PI, 0); ctx.fill();
+        ctx.strokeStyle = isBerserk ? `rgba(255,80,0,${0.5+pulse*0.3})` : `rgba(160,80,255,${0.5+pulse*0.3})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.ellipse(cx, cy-diskH*0.1, diskW*0.25, diskH*1.5, 0, Math.PI, 0); ctx.stroke();
+
+        // Odraz světla na kupoli
+        ctx.fillStyle = isBerserk ? 'rgba(255,150,80,0.12)' : 'rgba(200,150,255,0.12)';
+        ctx.beginPath(); ctx.ellipse(cx-diskW*0.08, cy-diskH*0.5, diskW*0.12, diskH*0.35, -0.3, Math.PI, 0); ctx.fill();
+
+        // === NEONOVÉ SVĚTELNÉ KROUŽKY (pod diskem) ===
+        const ringCount = 3;
+        for(let r = 0; r < ringCount; r++) {
+            const rr = diskW * (0.22 + r*0.10);
+            const rAlpha = (0.5 - r*0.12) * pulse;
+            ctx.strokeStyle = isBerserk 
+                ? `rgba(255,${60+r*40},0,${rAlpha})` 
+                : `rgba(${r*40},${180-r*30},255,${rAlpha})`;
+            ctx.lineWidth = 3 - r*0.7;
+            ctx.shadowBlur = 10; ctx.shadowColor = neonGlow;
+            ctx.beginPath();
+            ctx.arc(cx, cy+diskH*0.2, rr, 
+                b.glowPhase*(r%2===0?1:-1), 
+                b.glowPhase*(r%2===0?1:-1) + Math.PI*1.65);
+            ctx.stroke();
+        }
         ctx.shadowBlur = 0;
-        if(b.phase >= 3) { ctx.globalAlpha = 0.1 + Math.sin(b.glowPhase * 4) * 0.07; ctx.fillStyle = '#ff003c'; ctx.fillRect(bx - 10, by - 10, b.w + 20, b.h + 20); ctx.globalAlpha = 1; }
-        ctx.restore(); return;
+
+        // === LASER KANÓN (přední) ===
+        const cannonX = bx - 20;
+        const cannonY = cy - diskH*0.1;
+        ctx.fillStyle = '#080808';
+        ctx.fillRect(cannonX - 30, cannonY - 10, 32, 20);
+        ctx.strokeStyle = neonMain; ctx.lineWidth = 1.5;
+        ctx.strokeRect(cannonX - 30, cannonY - 10, 32, 20);
+        // Nabíjení
+        if(b.laserCharging) {
+            const chargeR = 10 + Math.sin(f*0.5)*7;
+            ctx.shadowBlur = 30; ctx.shadowColor = neonGlow;
+            ctx.fillStyle = isBerserk ? `rgba(255,60,0,${0.6+Math.sin(f*0.4)*0.4})` : `rgba(0,200,255,${0.6+Math.sin(f*0.4)*0.4})`;
+            ctx.beginPath(); ctx.arc(cannonX-30, cannonY, chargeR, 0, Math.PI*2); ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+        // Laser paprsek
+        if(b.laserBeamActive) {
+            ctx.shadowBlur = 35; ctx.shadowColor = neonGlow;
+            ctx.fillStyle = isBerserk ? 'rgba(255,60,0,0.95)' : 'rgba(0,220,255,0.95)';
+            ctx.fillRect(0, cannonY - 7, cannonX-30, 14);
+            ctx.fillStyle = isBerserk ? 'rgba(255,180,100,0.25)' : 'rgba(150,240,255,0.25)';
+            ctx.fillRect(0, cannonY - 18, cannonX-30, 36);
+            ctx.shadowBlur = 0;
+        }
+
+        // === ŠTÍT ===
+        if(b.shieldActive) {
+            ctx.save();
+            ctx.strokeStyle = `rgba(0,200,255,${0.3+pulse*0.3})`;
+            ctx.lineWidth = 3;
+            ctx.setLineDash([12,8]);
+            ctx.shadowBlur = 15; ctx.shadowColor = '#00c8ff';
+            ctx.beginPath(); ctx.ellipse(cx, cy, diskW*0.62, b.h*0.45, 0, 0, Math.PI*2); ctx.stroke();
+            ctx.setLineDash([]); ctx.restore();
+        }
+
+        // === DĚLOVÉ VĚŽE ===
+        if(b.turrets) {
+            for(let i = 0; i < b.turrets.length; i++) {
+                const turret = b.turrets[i];
+                const tx = bx - 20, ty = by + turret.offsetY - 10;
+                if(turret.destroyed) {
+                    ctx.fillStyle = '#221100';
+                    ctx.fillRect(tx, ty, 24, 16);
+                    if(Math.random() < 0.2) {
+                        ctx.globalAlpha = Math.random()*0.5;
+                        ctx.fillStyle='#666';
+                        ctx.beginPath(); ctx.arc(tx+12, ty-4-Math.random()*8, 4+Math.random()*4, 0, Math.PI*2); ctx.fill();
+                        ctx.globalAlpha=1;
+                    }
+                } else {
+                    const hpT = turret.hp/turret.maxHp;
+                    ctx.shadowBlur=8; ctx.shadowColor=isBerserk?'#ff2200':'#0088ff';
+                    ctx.fillStyle='#050510';
+                    ctx.fillRect(tx, ty, 30, 22);
+                    ctx.strokeStyle=hpT>0.5?neonMain:'#ff6600'; ctx.lineWidth=1.5; ctx.strokeRect(tx,ty,30,22);
+                    ctx.fillStyle=hpT>0.5?neonMain:'#ff6600'; ctx.fillRect(tx-14,ty+7,16,8);
+                    ctx.fillStyle='#111'; ctx.fillRect(tx,ty-5,30,4);
+                    ctx.fillStyle=hpT>0.5?'#00ff88':'#ff6600'; ctx.fillRect(tx,ty-5,30*hpT,4);
+                    ctx.shadowBlur=0;
+                }
+            }
+        }
+
+        // === HP BAR ===
+        const barW = 300, barH = 16;
+        const barX = canvas.width/2 - barW/2, barY = 28;
+        ctx.fillStyle='rgba(0,0,0,0.8)';
+        ctx.beginPath(); if(ctx.roundRect) ctx.roundRect(barX-2,barY-2,barW+4,barH+4,4); else ctx.rect(barX-2,barY-2,barW+4,barH+4); ctx.fill();
+        ctx.strokeStyle=isBerserk?'rgba(255,50,0,0.7)':'rgba(160,80,255,0.6)'; ctx.lineWidth=1.5;
+        ctx.beginPath(); if(ctx.roundRect) ctx.roundRect(barX-2,barY-2,barW+4,barH+4,4); else ctx.rect(barX-2,barY-2,barW+4,barH+4); ctx.stroke();
+        ctx.fillStyle=isBerserk?'#1a0000':'#0a0015';
+        ctx.beginPath(); if(ctx.roundRect) ctx.roundRect(barX,barY,barW,barH,3); else ctx.rect(barX,barY,barW,barH); ctx.fill();
+        ctx.shadowBlur=12; ctx.shadowColor=neonGlow;
+        const barGrad=ctx.createLinearGradient(barX,0,barX+barW,0);
+        if(isBerserk){barGrad.addColorStop(0,'#cc0000');barGrad.addColorStop(0.5,`rgba(255,${60+Math.floor(pulse*80)},0,1)`);barGrad.addColorStop(1,'#ff3300');}
+        else{barGrad.addColorStop(0,'#6600cc');barGrad.addColorStop(0.5,'#aa44ff');barGrad.addColorStop(1,'#cc88ff');}
+        ctx.fillStyle=barGrad;
+        ctx.beginPath(); if(ctx.roundRect) ctx.roundRect(barX,barY,barW*hpPct,barH,3); else ctx.rect(barX,barY,barW*hpPct,barH); ctx.fill();
+        ctx.shadowBlur=0;
+        ctx.fillStyle=isBerserk?'#ff6644':'#cc88ff'; ctx.font='bold 10px monospace'; ctx.textAlign='center';
+        ctx.fillText(isBerserk?'⚠ BERSERK PROTOCOL ⚠':'🛸 MOTHERSHIP UFO', canvas.width/2, barY-5);
+        if(b.shieldActive){
+            ctx.fillStyle='#001122'; ctx.fillRect(barX,barY+barH+4,barW,8);
+            ctx.fillStyle='#00c8ff'; ctx.shadowBlur=8; ctx.shadowColor='#00c8ff';
+            ctx.fillRect(barX,barY+barH+4,barW*(b.shieldHp/80),8);
+            ctx.shadowBlur=0;
+            ctx.fillStyle='rgba(150,220,255,0.7)'; ctx.font='9px monospace'; ctx.textAlign='left';
+            ctx.fillText('SHIELD', barX, barY+barH+2);
+        }
+
+        // === BERSERK AURA ===
+        if(isBerserk){
+            ctx.globalAlpha=0.07+Math.sin(b.glowPhase*5)*0.05;
+            ctx.fillStyle='#ff1100';
+            ctx.fillRect(bx-30,by-30,b.w+60,b.h+60);
+            ctx.globalAlpha=1;
+        }
+
+        ctx.restore();
+        return;
     }
     // === L6: TOXIC LEVIATHAN DRAW ===
     if(b.type === 'toxic_leviathan') {
@@ -4785,19 +5123,31 @@ function updateBoss(b, dt) {
     // === L7: MOTHERSHIP UPDATE ===
     if(b.type === 'mothership') {
         b.glowPhase += 0.035 * dt;
-        if(b.x > canvas.width - 380) { b.x -= 2.5 * dt; if(Math.random() < 0.3) shake = Math.max(shake, 3); return; }
+
+        // Entry animace - třese se při příjezdu
+        if(b.x > canvas.width - 380) {
+            b.x -= 2.5 * dt;
+            if(Math.random() < 0.3) shake = Math.max(shake, 3);
+            return;
+        }
+
+        // === DYING SEQUENCE ===
         if(b.dyingSequence) {
             b.dyingTimer += dt;
+            // Framerate-independent explosion timer (Gemini fix)
             b.explosionTick = (b.explosionTick || 0) + dt;
             if(b.explosionTick > 5) {
                 b.explosionTick = 0;
-                createExplosion(b.x + Math.random() * b.w, b.y + Math.random() * b.h, '#ff003c', 15 + Math.random() * 20);
-                shake = Math.max(shake, 5); b.dyingExplosions++;
+                const ex = b.x + Math.random() * b.w;
+                const ey = b.y + Math.random() * b.h;
+                createExplosion(ex, ey, '#ff003c', 15 + Math.random() * 20);
+                shake = Math.max(shake, 5);
+                b.dyingExplosions++;
             }
             if(b.dyingExplosions > 20 || b.dyingTimer > 180) {
-                createExplosion(b.x + b.w/2, b.y + b.h/2, '#ff003c', 200);
-                createExplosion(b.x + b.w/2, b.y + b.h/2, '#ff6600', 150);
-                shake = 60; playSnd(40, 1.5, 'sawtooth', 0.3);
+                createExplosion(b.x + b.w/2, b.y + b.h/2, '#ffffff', 120);
+                shake = 80;
+                hitStopTimer = 150;
                 bossActive = false; boss = null; score += 5000;
                 notifyLevelCompleted(7);
                 setTimeout(() => {
@@ -4810,52 +5160,110 @@ function updateBoss(b, dt) {
                         showFinalLeaderboard();
                     }
                 }, 1500);
+                return;
             }
             return;
         }
+
+        // Vertikální pohyb
         b.y += b.vertSpeed * b.moveDir * dt;
         if(b.y < 30) b.moveDir = 1;
         if(b.y > canvas.height - b.h - 30) b.moveDir = -1;
+
+        // Fáze dle HP
         const hpPct = b.hp / b.maxHp;
-        if(hpPct < 0.66 && b.phase === 1) { b.phase = 2; b.shieldActive = false; shake = 25; playSnd(55, 0.8, 'sawtooth', 0.2); showBossWarning('SHIELD DESTROYED', '#ff6600'); }
-        if(hpPct < 0.33 && b.phase === 2) { b.phase = 3; b.vertSpeed = 1.8; shake = 35; playSnd(40, 1.0, 'sawtooth', 0.25); showBossWarning('CRITICAL DAMAGE', '#ff003c'); }
-        if(b.hp <= 0 && !b.dyingSequence) {
-            b.hp = 0; b.dyingSequence = true; b.invulnerable = true; b.invulnerableTimer = 9999;
-            b.dyingTimer = 0; b.dyingExplosions = 0; shake = 40;
-            showBossWarning('MOTHERSHIP DESTROYED', '#ff003c'); playSnd(50, 2.0, 'sawtooth', 0.3); return;
+        if(hpPct < 0.66 && b.phase === 1) {
+            b.phase = 2; b.shieldActive = false;
+            shake = 25; playSnd(55, 0.8, 'sawtooth', 0.2);
+            showBossWarning('SHIELD DESTROYED', '#ff6600');
         }
+        if(hpPct < 0.33 && b.phase === 2) {
+            b.phase = 3; b.vertSpeed = 1.8;
+            shake = 35; playSnd(40, 1.0, 'sawtooth', 0.25);
+            showBossWarning('CRITICAL DAMAGE', '#ff003c');
+        }
+        // Zahájení dying sequence místo okamžité smrti
+        if(b.hp <= 0 && !b.dyingSequence) {
+            b.hp = 0; // Zamkni na 0
+            b.dyingSequence = true;
+            b.invulnerable = true; // Nezasažitelný během dying
+            b.invulnerableTimer = 9999;
+            b.dyingTimer = 0;
+            b.dyingExplosions = 0;
+            shake = 40;
+            showBossWarning('MOTHERSHIP DESTROYED', '#ff003c');
+            playSnd(50, 2.0, 'sawtooth', 0.3);
+            return;
+        }
+
         const speedMult = b.phase === 3 ? 0.5 : b.phase === 2 ? 0.7 : 1.0;
+
+        // === EMP ÚTOK (fáze 2+) ===
         if(b.phase >= 2) {
             b.empTimer = (b.empTimer || 0) + dt;
-            if(b.empTimer > 300) { b.empTimer = 0; empEffect = 120; shake = 20; playSnd(150, 0.8, 'square', 0.2); createExplosion(b.x + b.w/2, b.y + b.h/2, '#00c8ff', 50); }
+            if(b.empTimer > 300) {
+                b.empTimer = 0;
+                empEffect = 120; // 2 sekundy EMP
+                shake = 20;
+                playSnd(150, 0.8, 'square', 0.2);
+                playSnd(80, 0.5, 'sawtooth', 0.15);
+                // EMP výbuch ze středu lodi
+                createExplosion(b.x + b.w/2, b.y + b.h/2, '#00c8ff', 50);
+            }
         }
+
+        // === LASEROVÝ ÚTOK ===
         b.laserTimer += dt;
-        if(!b.laserCharging && b.laserTimer > 200 * speedMult) { b.laserCharging = true; b.laserTimer = 0; playSnd(800, 0.3, 'sine', 0.15); }
-        if(b.laserCharging && b.laserTimer > 60) { b.laserCharging = false; b.laserBeamActive = true; b.laserBeamTimer = 0; }
+        if(!b.laserCharging && b.laserTimer > 280 * speedMult) {
+            b.laserCharging = true; b.laserTimer = 0;
+            playSnd(800, 0.3, 'sine', 0.15);
+        }
+        if(b.laserCharging && b.laserTimer > 60) {
+            b.laserCharging = false;
+            b.laserBeamActive = true;
+            b.laserBeamTimer = 0;
+        }
         if(b.laserBeamActive) {
             b.laserBeamTimer += dt;
-            if(b.laserBeamTimer > 40) b.laserBeamActive = false;
+            if(b.laserBeamTimer > 25) b.laserBeamActive = false; // Kratší beam
+            // Kolize laseru s hráčem (jen jednou za beam, ne každý frame)
             b.laserHit = b.laserHit || false;
-            if(!b.laserHit && !plane.shield && plane.y + plane.h > b.y + b.h/2 - 15 && plane.y < b.y + b.h/2 + 15) { takeDmg(); b.laserHit = true; }
-        } else { b.laserHit = false; }
-        const shootInterval = 55 * speedMult;
+            if(!b.laserHit && !plane.shield && plane.y + plane.h > b.y + b.h/2 - 15 && plane.y < b.y + b.h/2 + 15) {
+                takeDmg();
+                b.laserHit = true;
+            }
+        } else {
+            b.laserHit = false;
+        }
+
+        // === STŘELBA Z VĚŽÍ (jen z živých věží) ===
+        const shootInterval = 90 * speedMult; // Pomalejší střelba
         for(let i = 0; i < 5; i++) {
             if(b.turrets && b.turrets[i] && b.turrets[i].destroyed) continue;
             b.gunTimer[i] = (b.gunTimer[i]||0) + dt;
-            if(b.gunTimer[i] >= shootInterval + i * 12) {
+            if(b.gunTimer[i] >= shootInterval + i * 20) { // Větší offset mezi věžemi
                 b.gunTimer[i] = 0;
-                const gy = b.y + 30 + i * 40; const speed = 7 + b.phase;
+                const gy = b.y + 30 + i * 40;
+                const speed = 6 + b.phase;
                 enemyBullets.push({ x: b.x, y: gy, w: 12, h: 12, vx: -speed, vy: 0, color: '#ff003c' });
-                if(b.phase >= 2) enemyBullets.push({ x: b.x, y: gy, w: 10, h: 10, vx: -(speed-2), vy: (i-2)*2, color: '#ff6688' });
-                if(b.phase >= 3) for(let s = -2; s <= 2; s++) enemyBullets.push({ x: b.x, y: gy, w: 8, h: 8, vx: -6, vy: s * 3, color: '#ff0044' });
+                if(b.phase >= 2) {
+                    enemyBullets.push({ x: b.x, y: gy, w: 10, h: 10, vx: -(speed-2), vy: (i-2)*1.5, color: '#ff6688' });
+                }
+                if(b.phase >= 3) {
+                    for(let s = -1; s <= 1; s++) { // Jen 3 střely místo 5
+                        enemyBullets.push({ x: b.x, y: gy, w: 8, h: 8, vx: -6, vy: s * 3, color: '#ff0044' });
+                    }
+                }
             }
         }
-        b.droneSpawnTimer = (b.droneSpawnTimer||0) + dt;
-        if(b.phase >= 2 && b.droneSpawnTimer > 150) {
-            b.droneSpawnTimer = 0;
-            enemies.push({ x: b.x + b.w/2, y: b.y + b.h/2, w: 55, h: 35, s: 9 * gameSpeedMult, type: 'interceptor', shootT: 0, hp: 2, fromTop: Math.random() > 0.5, diveTarget: plane.y, diveSpeed: 4, divePhase: 'approach' });
+
+        // Drone spawn disabled — čistá boss aréna
+
+        // Invulnerability
+        if(b.invulnerable) {
+            b.invulnerableTimer -= dt;
+            if(b.invulnerableTimer <= 0) b.invulnerable = false;
         }
-        if(b.invulnerable) { b.invulnerableTimer -= dt; if(b.invulnerableTimer <= 0) b.invulnerable = false; }
         return;
     }
     // === L6: TOXIC LEVIATHAN UPDATE ===
@@ -10459,6 +10867,6 @@ function renderFinalLeaderboard(scores) {
 }
 
 </script>
-<div id="buildTag" style="position:fixed; left:8px; bottom:6px; z-index:400; font-size:10px; color:rgba(255,255,255,0.35); font-family:monospace; pointer-events:none;">build 2026-07-14-M</div>
+<div id="buildTag" style="position:fixed; left:8px; bottom:6px; z-index:400; font-size:10px; color:rgba(255,255,255,0.35); font-family:monospace; pointer-events:none;">build 2026-07-14-N</div>
 </body>
 </html>
