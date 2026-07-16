@@ -9497,7 +9497,7 @@ spawnParticle(Math.random()*canvas.width, Math.random()*canvas.height*0.7, -1-Ma
     }
 
     // Clouds - NOT in Level 4 (blocks view of rocks and enemies)
-    if(currentLevel !== 4) {
+    if(currentLevel !== 4 && currentLevel !== 7) {
         clouds.forEach(c => { 
             if(currentLevel === 3) {
                 // Darker clouds for ocean storm
@@ -9750,7 +9750,7 @@ spawnParticle(Math.random()*canvas.width, Math.random()*canvas.height*0.7, -1-Ma
             ctx.closePath();
             ctx.fill();
         });
-    } else {
+    } else if(currentLevel !== 7) {
         mountains.forEach(m => { 
             ctx.fillStyle = m.color; 
             ctx.beginPath(); 
@@ -10867,6 +10867,6 @@ function renderFinalLeaderboard(scores) {
 }
 
 </script>
-<div id="buildTag" style="position:fixed; left:8px; bottom:6px; z-index:400; font-size:10px; color:rgba(255,255,255,0.35); font-family:monospace; pointer-events:none;">build 2026-07-14-N</div>
+<div id="buildTag" style="position:fixed; left:8px; bottom:6px; z-index:400; font-size:10px; color:rgba(255,255,255,0.35); font-family:monospace; pointer-events:none;">build 2026-07-16-O</div>
 </body>
 </html>
