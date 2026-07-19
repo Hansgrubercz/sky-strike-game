@@ -377,12 +377,6 @@
 }
 </style>
 
-<div id="boss-progress-container" style="display:none; position:absolute; bottom:18px; left:50%; transform:translateX(-50%); width:320px; z-index:50;">
-  <div id="boss-progress-label" style="text-align:center; color:#00c8ff; font-size:11px; letter-spacing:3px; font-family:Orbitron,sans-serif; margin-bottom:4px;">BOSS: 0%</div>
-  <div style="background:rgba(0,0,0,0.6); border:1px solid rgba(0,200,255,0.3); border-radius:4px; height:8px; overflow:hidden;">
-    <div id="boss-progress-bar" style="height:100%; width:0%; background:#00c8ff; transition:width 0.3s ease, background 0.5s ease; box-shadow:0 0 8px #00c8ff;"></div>
-  </div>
-</div>
 <div id="gameOver">
   <h1 style="font-weight: 200; margin: 0; font-size: 42px">MISSION FAILED</h1>
   <p id="finalScore" style="color: #c7d5e0; margin: 25px 0; font-size: 20px"></p>
@@ -1885,22 +1879,7 @@ function update(dt) {
             type: 'smoke'
         });
     }
-    if(currentLevel === 7) {
-        const bossEl = document.getElementById("boss-progress-container");
-        if(bossEl) {
-            if(!bossSpawned) {
-                bossEl.style.display = "block";
-                const pct = Math.min(100, (score / 20000) * 100);
-                document.getElementById("boss-progress-bar").style.width = pct + "%";
-                document.getElementById("boss-progress-bar").style.background = 
-                    pct >= 90 ? "#ff003c" : pct >= 60 ? "#ff6600" : "#00c8ff";
-                document.getElementById("boss-progress-label").textContent = 
-                    pct >= 100 ? "⚠ BOSS INCOMING! ⚠" : ("BOSS: " + Math.floor(pct) + "%");
-            } else {
-                bossEl.style.display = "none";
-            }
-        }
-    }
+    
     if(currentLevel === 7) {
         // Portál animace
         l7Portal.angle += 0.018;
@@ -11040,6 +11019,6 @@ function renderFinalLeaderboard(scores) {
 }
 
 </script>
-<div id="buildTag" style="position:fixed; left:8px; bottom:6px; z-index:400; font-size:10px; color:rgba(255,255,255,0.35); font-family:monospace; pointer-events:none;">build 2026-07-19-R</div>
+<div id="buildTag" style="position:fixed; left:8px; bottom:6px; z-index:400; font-size:10px; color:rgba(255,255,255,0.35); font-family:monospace; pointer-events:none;">build 2026-07-19-S</div>
 </body>
 </html>
