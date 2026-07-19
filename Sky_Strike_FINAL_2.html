@@ -8361,6 +8361,8 @@ function drawNYCBuilding(b) {
             ctx.setLineDash([]);
         }
     }
+    
+        return;
     }
     if(currentLevel === 6) {
         // 🌊 ABYSSAL DEEP - Bioluminescent Corals!
@@ -9944,7 +9946,7 @@ spawnParticle(Math.random()*canvas.width, Math.random()*canvas.height*0.7, -1-Ma
     }
 
     // Buildings (only for NYC - Level 1)
-    if(currentLevel === 1) {
+    if(currentLevel === 1 || currentLevel === 7) {
         backgroundBuildings.forEach(b => drawNYCBuilding(b));
         buildings.forEach(b => drawNYCBuilding(b));
     }
@@ -11038,6 +11040,6 @@ function renderFinalLeaderboard(scores) {
 }
 
 </script>
-<div id="buildTag" style="position:fixed; left:8px; bottom:6px; z-index:400; font-size:10px; color:rgba(255,255,255,0.35); font-family:monospace; pointer-events:none;">build 2026-07-19-Q</div>
+<div id="buildTag" style="position:fixed; left:8px; bottom:6px; z-index:400; font-size:10px; color:rgba(255,255,255,0.35); font-family:monospace; pointer-events:none;">build 2026-07-19-R</div>
 </body>
 </html>
